@@ -1,24 +1,21 @@
 {
   "name": "elixir-salon-spur",
-  "version": "1.0.0",
-  "description": "---",
+  "version": "2.0.0",
+  "description": "Elixir Salon & Spa – dynamic website with a full content-management admin panel",
   "main": "server/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server/server.js",
-    "dev": "nodemon server/server.js"
+    "dev": "nodemon server/server.js",
+    "reset-admin": "node server/reset-admin.js"
   },
   "keywords": [],
   "author": "Michael Maina",
   "license": "ISC",
+  "engines": { "node": ">=18" },
   "dependencies": {
-    "body-parser": "^1.20.3",
-    "cors": "^2.8.5",
     "dotenv": "^16.4.7",
-    "elixir-salon-spur": "file:",
     "express": "^4.21.2",
     "multer": "^1.4.5-lts.1",
-    "mysql": "^2.18.1",
     "mysql2": "^3.12.0",
     "nodemailer": "^6.9.16"
   },

@@ -1,178 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Admin - Elixir</title>
-    <!-- Logo Icon-->
-    <link rel="shortcut icon" href="./resources/elixir_logo.png" type="image/x-icon" />
-
-    <!-- link css -->
-    <link rel="stylesheet" href="../css/style.css" />
-    <link rel="stylesheet" href="../css/easy.css" />
-    <link rel="stylesheet" href="../css/admin.css" />
-
-    <!-- Scroll cdn -->
-    <link rel="stylesheet" href="https://unpkg.com/aos@next/dist/aos.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-
-    <!-- Font awesome cdn -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.0/css/all.min.css"
-        integrity="sha512-9xKTRVabjVeZmc+GUW8GgSmcREDunMM+Dt/GrzchfN8tkwHizc5RP4Ok/MXFFy5rIjJjzhndFScTceq5e6GvVQ=="
-        crossorigin="anonymous" referrerpolicy="no-referrer" />
-
-    <!-- Font Oregano -->
-    <link href="https://fonts.googleapis.com/css2?family=Oregano&display=swap" rel="stylesheet" />
-    <!-- Font DM Sans  sans-serif -->
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
-    <!-- Font IBM Plex Sans Hebrew sans-serif -->
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Hebrew:wght@400;500;700&display=swap"
-        rel="stylesheet" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Elixir · Admin</title>
+  <link rel="icon" href="/resources/elixir_logo.png">
+  <link rel="stylesheet" href="/admin/fonts.css">
+  <link rel="stylesheet" href="/admin/admin.css">
 </head>
-
 <body>
-    <header>
-        <nav id="nav-bar" class="admin-vavbar">
-            <div class="left-nav-section">
-                <a href="/" class="navbar-logo">
-                    <img src="../resources/elixir_logo.png" alt="" />
-                </a>
-            </div>
-            <div class="right-nav-section">
-                <h4>ADMIN DASHBOARD</h4>
-            </div>
-        </nav>
-    </header>
-
-    <!-- Login Page -->
-    <section id="login-page" class="page no-scroll">
-        <form id="login-form" onsubmit="handleLogin(event)">
-            <h2 class="flickering-text login">Login</h2>
-            <label for="username">Username:</label>
-            <input type="text" id="username" name="username" required>
-
-            <label for="password">Password:</label>
-            <input type="password" id="password" name="password" required>
-
-            <button type="submit" class="flickering-button">Login</button>
-        </form>
-    </section>
-    </div>
-    </section>
-
-
-    <!-- Admin Dashboard -->
-    <section id="dashboard">
-        <div class="sidebar">
-            <ul>
-                <li onclick="navigateToContactPage()" class="nav-link active">Communication</li>
-                <li onclick="navigateToRatingstPage()" class="nav-link">Ratings</li>
-                <li onclick="navigateToApplicationsPage()" class="nav-link">Applications</li>
-                <li onclick="navigateToMedia()" class="nav-link">Media Files</li>
-            </ul>
-        </div>
-        <div class="v-layout my-content">
-            <div id="contact" class="content-section">
-                <div id="contact-bar" class="h-layout header-bar contact-content" style="position: fixed;">
-                    <h6 class="dat-tile">DATE</h6>
-                    <h6 class="name-tile">NAME</h6>
-                    <h6 class="email-tile">EMAIL</h6>
-                    <h6 class="phone-tile">PHONE</h6>
-                    <h6 class="message-tile">MASSAGE</h6>
-                    <h6 class="action">ACTION</h6>
-                </div>
-                <div class="v-layout contact-content" id="data-list" style="overflow-y: scroll; overflow-x: hidden;">
-                </div>
-            </div>
-            <div id="ratings" class="content-section">
-                <div id="rating-bar" class="h-layout header-bar contact-content" style="position: fixed;">
-                    <h6 class="dat-tile">DATE</h6>
-                    <h6 class="name-tile">NAME</h6>
-                    <h6 class="type-tile">TYPE</h6>
-                    <h6 class="comment-tile">COMMENT</h6>
-                    <h6 class="phone-tile">STAR</h6>
-                    <h6 class="action">ACTION</h6>
-                </div>
-                <div class="v-layout contact-content" id="rating-list" style="overflow-y: scroll; overflow-x: hidden;">
-                    <div class="h-layout contact-texts">
-                        <p class="dat">2025-01-10 UTC</p>
-                        <p class="name">MICHAEL MAINA</p>
-                        <p class="type">CLIENT</p>
-                        <p class="message">The quick brown fox jumped over the lazy dogs</p>
-                        <p class="phone">5</p>
-                        <p class="button">FEEDBACK</p>
-                        <p class="button orange">VIEW</p>
-                        <p class="button red">DELETE</p>
-                    </div>
-                </div>
-            </div>
-
-            <div id="applications" class="content-section">
-                <div id="application-bar" class="h-layout header-bar contact-content" style="position: fixed;">
-                    <h6 class="dat-tile">DATE</h6>
-                    <h6 class="name-tile">NAME</h6>
-                    <h6 class="email-tile">EMAIL</h6>
-                    <h6 class="phone-tile">PHONE</h6>
-                    <h6 class="message-tile">DOCUMENT</h6>
-                    <h6 class="action">ACTION</h6>
-                </div>
-                <div class="v-layout contact-content" id="application-list"
-                    style="overflow-y: scroll; overflow-x: hidden;">
-                    <div class="h-layout contact-texts">
-                        <p class="dat">2025-01-10 UTC</p>
-                        <p class="name">MICHAEL MAINA</p>
-                        <p class="email">pantalemonmongah@gmail.com</p>
-                        <p class="phone">0799292048</p>
-                        <p class="message">The quick brown fox jumped over the lazy dogs</p>
-                        <p class="button">VIEW</p>
-                        <p class="button red">DELETE</p>
-                    </div>
-                </div>
-            </div>
-            <div id="media" class="content-section">
-                <h2>Video MGT - COMING SOON!</h2>
-            </div>
-        </div>
-    </section>
-
-    <!-- Popup Modal -->
-    <section id="popup" class="background-tint-gold" style="height: 0%;">
-        <div id="btnClosePrivacyPolicy" onclick="closePopup()" class="btn_hover1" style="position: fixed;">
-            <i class="fa-solid fa-xmark"></i>
-        </div>
-        <div class="popup-content">
-            <p id="popup-message"></p>
-        </div>
-    </section>
-    <!-- Popup Modal -->
-    <section id="input-popup" class="background-tint-gold" style="height: 0%;">
-        <div id="btnClosePrivacyPolicy" onclick="closePopup()" class="btn_hover1" style="position: fixed;">
-            <i class="fa-solid fa-xmark"></i>
-        </div>
-        <div class="popup-content">
-            <p style="color: burlywood; margin: 3px 20px 10px 20px;">Give Your FeedBack</p>
-            <input id="input-message" placeholder="Enter feedback here">
-            <button id="submitFeedback" class="flickering-button" onclick="submitFeedback()">SUBMIT</button>
-        </div>
-    </section>
-
-    <div id="application-list"></div>
-
-    <section id="doc-popup" class="background-tint-gold" style="height: 0%;">
-        <div id="btnClosePrivacyPolicy" onclick="closePopup()" class="btn_hover1" style="position: fixed;">
-            <div class="popup-content">
-                    <div class="appointment-layout outer-container">
-                        <!-- Document content will be inserted here -->
-                         </div>
-                         </div>
-                         </div>
-                         </section>
-    </div>
-</section>
-
-
-    <script src="../scripts/admin.js"></script>
+  <div id="root"><div class="splash">Loading…</div></div>
+  <div id="toasts" aria-live="polite"></div>
+  <script src="/admin/admin-core.js"></script>
+  <script src="/admin/admin-pages.js"></script>
 </body>
-
 </html>

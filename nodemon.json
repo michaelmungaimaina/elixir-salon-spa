@@ -1,7 +1,6 @@
 {
-    "watch": ["server", "public"],
-    "ext": "js,json,html,css",
-    "ignore": ["node_modules"],
-    "exec": "node server/server.js"
-  }
-  
+  "watch": ["server"],
+  "ext": "js,json",
+  "ignore": ["node_modules", "public", "uploads"],
+  "exec": "node server/server.js"
+}
