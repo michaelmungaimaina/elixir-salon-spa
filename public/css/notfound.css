@@ -1,0 +1,43 @@
+/* 404 page – shares tokens, header and buttons with site.css */
+.nf { background: var(--ground); min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+.nf-main { flex: 1; display: flex; align-items: center; position: relative; overflow: hidden; padding: calc(var(--header-h) + 56px) 0 72px;
+  background: radial-gradient(800px 520px at 82% 40%, color-mix(in srgb, var(--emerald) 55%, transparent), transparent 70%), radial-gradient(640px 460px at 0% 100%, color-mix(in srgb, var(--bronze) 22%, transparent), transparent 70%), var(--ground); }
+.nf-main::before { content: ''; position: absolute; inset: 0; pointer-events: none; background: repeating-radial-gradient(circle at 76% 48%, transparent 0 62px, rgb(212 172 82 / .07) 62px 63px);
+  -webkit-mask-image: radial-gradient(ellipse 62% 72% at 76% 48%, #000 25%, transparent 78%); mask-image: radial-gradient(ellipse 62% 72% at 76% 48%, #000 25%, transparent 78%); }
+.nf-grid { position: relative; z-index: 1; display: grid; grid-template-columns: 1.05fr .95fr; gap: clamp(32px, 6vw, 96px); align-items: center; }
+
+/* the large 404 – the zero is the salon mirror */
+.nf-art { order: 2; display: flex; align-items: center; justify-content: center; gap: clamp(8px, 1.6vw, 20px); font-family: var(--serif); }
+.nf-num { font-size: clamp(7.5rem, 17vw, 15rem); line-height: .78; font-weight: 600; color: var(--gold-pale); letter-spacing: -.02em; font-variant-numeric: lining-nums; text-shadow: 0 18px 50px rgb(0 0 0 / .35); }
+.nf-mirror { position: relative; flex: none; width: clamp(6.4rem, 13vw, 11.5rem); aspect-ratio: 3 / 4; border-radius: 50%; border: 1.5px solid var(--gold); background: var(--olive); z-index: 0; }
+.nf-mirror::before { content: ''; position: absolute; inset: 12px -12px -12px 12px; border-radius: 50%; background: var(--sheen); z-index: -1; }
+.nf-mirror img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+
+.nf-copy { order: 1; }
+.nf-copy .ribbon { margin-bottom: 8px; }
+.nf-copy h1 { font-size: clamp(2.4rem, 5.2vw, 4.2rem); color: var(--gold-pale); margin: 18px 0 16px; text-wrap: balance; }
+.nf-copy .lead { color: var(--muted); font-size: clamp(1.02rem, 1.5vw, 1.2rem); max-width: 34rem; margin: 0 0 14px; }
+.nf-path { font-size: .85rem; color: var(--muted); margin: 0 0 28px; }
+.nf-path code { font: .84rem/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: rgb(255 255 255 / .07); border: 1px solid var(--line); padding: 2px 9px; border-radius: 7px; word-break: break-all; color: var(--ink); }
+.nf-links { margin-top: 40px; }
+.nf-links h2 { font: 600 1.45rem/1 var(--serif); color: var(--gold); margin: 0 0 14px; }
+.nf-chips { display: flex; flex-wrap: wrap; gap: 10px; }
+.nf-chip { display: inline-flex; align-items: center; gap: 10px; padding: 11px 18px; min-height: 44px; border: 1px solid var(--line); border-radius: 999px; background: rgb(255 255 255 / .04); color: var(--ink); text-decoration: none; font-weight: 500; font-size: .95rem; transition: border-color .2s, background .2s, transform .2s; }
+.nf-chip i { color: var(--gold); font-size: .9rem; } .nf-chip:hover { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 14%, transparent); transform: translateY(-2px); }
+.nf-help { margin: 30px 0 0; color: var(--muted); } .nf-help a { color: var(--gold-bright); font-weight: 700; text-decoration: none; } .nf-help a:hover { text-decoration: underline; }
+.nf-foot { border-top: 1px solid var(--line); background: #17140c; padding: 20px 0 calc(20px + env(safe-area-inset-bottom)); text-align: center; color: var(--muted); font-size: .88rem; }
+.nf-foot a { color: var(--gold); text-decoration: none; }
+
+/* gentle entrance (reuses the hero's "rise") */
+.nf-copy > * { animation: rise .9s cubic-bezier(.2, .7, .2, 1) both; } .nf-copy > :nth-child(2) { animation-delay: .1s; } .nf-copy > :nth-child(3) { animation-delay: .18s; } .nf-copy > :nth-child(n+4) { animation-delay: .26s; }
+.nf-art { animation: rise 1.1s .15s cubic-bezier(.2, .7, .2, 1) both; }
+
+@media (max-width: 960px) {
+  .nf-main { padding: calc(var(--header-h) + 36px) 0 56px; align-items: flex-start; }
+  .nf-grid { grid-template-columns: 1fr; text-align: center; gap: 28px; }
+  .nf-art { order: 0; } .nf-copy { order: 1; }
+  .nf-num { font-size: clamp(6.5rem, 30vw, 10rem); }
+  .nf-copy .lead { margin-inline: auto; } .nf-copy .cta-row, .nf-chips { justify-content: center; }
+  .nf-mirror::before { inset: 9px -9px -9px 9px; }
+}
+@media (max-width: 480px) { .nf-copy .cta-row .btn { flex: 1 1 100%; } }

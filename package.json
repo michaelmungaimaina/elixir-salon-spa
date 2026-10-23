@@ -1,11 +1,11 @@
 {
   "name": "elixir-salon-spur",
-  "version": "2.0.0",
-  "description": "Elixir Salon & Spa – dynamic website with a full content-management admin panel",
-  "main": "server/app.js",
+  "version": "3.0.1",
+  "description": "Elixir Salon & Spa – website with built-in online booking and a full content-management admin panel",
+  "main": "server/server.js",
   "scripts": {
-    "start": "node server/app.js",
-    "dev": "nodemon server/app.js",
+    "start": "node server/server.js",
+    "dev": "nodemon server/server.js",
     "reset-admin": "node server/reset-admin.js"
   },
   "keywords": [],

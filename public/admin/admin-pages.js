@@ -13,7 +13,7 @@
 
   const SCHEMA = {
     brand: [T('name', 'Business name', { half: 1 }), T('tagline', 'Tagline', { half: 1 }), T('logo', 'Logo', { type: 'image', hint: 'Shown in the header, footer and browser tab. Transparent PNG works best.' }),
-      T('bookingUrl', 'Booking link', { type: 'url', hint: 'Every “Book Now” button on the website goes here (your Fresha link).' }),
+      T('bookingUrl', 'Booking link', { type: 'url', hint: 'Fallback only: used when online booking is switched off (Bookings > Schedule & hours). Normally every “Book” button opens your own booking window.' }),
       T('gtmId', 'Google Tag Manager ID', { half: 1, hint: 'e.g. GTM-XXXXXXX – leave empty to turn tracking off.' }), T('creditLabel', 'Footer credit label', { half: 1 }), T('creditName', 'Footer credit name', { half: 1 }), T('creditUrl', 'Footer credit link', { half: 1, type: 'url' })],
     seo: [T('title', 'Page title', { hint: 'Shown on Google and in the browser tab. About 60 characters.' }), T('description', 'Description', { type: 'textarea', rows: 3, hint: 'Shown under your title on Google. About 150 characters.' }), T('ogImage', 'Sharing image', { type: 'image', hint: 'Shown when the site is shared on WhatsApp, Facebook, etc.' })],
     theme: [T('green', 'Brand green', { type: 'color', half: 1 }), T('gold', 'Brand gold', { type: 'color', half: 1 }), T('ground', 'Page background', { type: 'color', half: 1, hint: 'A deep, dark shade keeps text readable.' })],
@@ -30,21 +30,64 @@
     contact: [T('heading', 'Heading'), T('intro', 'Intro text', { type: 'textarea', rows: 2 }), T('formIntro', 'Text above the form', { type: 'textarea', rows: 2 }),
       T('email', 'Email', { half: 1 }), T('phone', 'Phone', { half: 1 }), T('phone2', 'Second phone', { half: 1 }), T('whatsapp', 'WhatsApp number', { half: 1 }), T('whatsappMessage', 'WhatsApp starter message', { hint: 'Pre-filled when someone taps the WhatsApp button.' }),
       T('address', 'Address', { half: 1 }), T('mapsUrl', 'Google Maps link', { half: 1, type: 'url' }),
-      { k: 'hours', label: 'Opening hours', type: 'rows', addLabel: 'Add hours', cols: [{ k: 'days', label: 'Days', placeholder: 'Mon – Fri' }, { k: 'time', label: 'Hours', placeholder: '09:00 – 20:00' }] },
+      T('hoursNote', 'Note under opening hours', { hint: 'Opening hours themselves come from Bookings > Schedule & hours, so they are always the same everywhere. Use this for notes like “Closed on public holidays”.' }),
       { k: 'social', label: 'Social media', type: 'rows', addLabel: 'Add network', hint: 'Networks with an empty link are hidden.', cols: [{ k: 'platform', label: 'Network', type: 'select', options: SOCIALS, def: 'facebook' }, { k: 'url', label: 'Link (https://…)', wide: false }] }],
     work: [T('heading', 'Heading'), T('intro', 'Intro text', { type: 'textarea', rows: 3 }), T('image', 'Photo', { type: 'image' }), T('whyHeading', '“Why join” heading', { half: 1 }), T('openingsHeading', '“Openings” heading', { half: 1 }),
       T('why', 'Reasons to join', { type: 'list', addLabel: 'Add reason' }), T('requirementsHeading', 'Requirements heading', { half: 1 }), T('cta', 'Apply button text', { half: 1 }), T('requirements', 'Requirements', { type: 'list', addLabel: 'Add requirement' })],
     promoSection: [T('heading', 'Heading'), T('claimLabel', 'Default offer button text', { half: 1 }), T('closingHeading', 'Closing heading'), T('closingText', 'Closing text', { type: 'textarea', rows: 2 }), T('closingCta', 'Closing button text', { half: 1 })],
     testimonialsSection: [T('heading', 'Heading'), T('rateLabel', '“Share your experience” button', { half: 1 }), T('replyLabel', 'Label above your replies', { half: 1 }), T('autoApprove', 'Publish new reviews automatically', { type: 'bool', hint: 'Off (recommended): reviews wait for your approval first.' })],
     privacy: [T('heading', 'Heading', { half: 1 }), T('effective', 'Effective date', { half: 1 }), T('body', 'Policy text', { type: 'textarea', rows: 24, hint: 'Use “## Title” for headings, “- ” for bullet points, **bold** for emphasis, and a blank line between paragraphs.' })],
-    email: [T('notifyTo', 'Send alerts to', { half: 1, hint: 'You are emailed when someone sends a message, applies or leaves a review.' }), T('fromName', 'Sender name', { half: 1 }), T('address', 'Address shown in email footer'),
-      T('contactSubject', 'Contact form – reply subject'), T('contactBody', 'Contact form – reply message', { type: 'textarea', rows: 8, hint: 'Use {{name}} to insert the person’s first name.' }),
-      T('applicationSubject', 'Job application – reply subject'), T('applicationBody', 'Job application – reply message', { type: 'textarea', rows: 8 })],
+    email: [
+      { k: 'h1', type: 'heading', label: 'Sender & alerts', hint: 'Emails are sent from the mailbox set on the server (info@…). When a client presses Reply, the message goes to the “Reply-To” address.' },
+      T('replyTo', 'Reply-To address', { half: 1, hint: 'Where client replies arrive, e.g. admin@elixirsalonandspa.co.ke' }), T('notifyTo', 'Send team alerts to', { half: 1, hint: 'New bookings, messages, applications and reviews. Separate several addresses with commas.' }),
+      T('fromName', 'Sender name', { half: 1 }), T('address', 'Address shown in email footer', { half: 1 }),
+      { k: 'h2', type: 'heading', label: 'Booking emails', hint: 'Use {{name}}, {{reference}}, {{date}}, {{time}} and {{services}}. The booking details, buttons and calendar invite are added automatically.' },
+      T('bookingConfirmedSubject', 'Confirmed – subject'), T('bookingConfirmedBody', 'Confirmed – message', { type: 'textarea', rows: 5 }),
+      T('bookingPendingSubject', 'Awaiting approval – subject'), T('bookingPendingBody', 'Awaiting approval – message', { type: 'textarea', rows: 4 }),
+      T('bookingUpdatedSubject', 'Rescheduled – subject'), T('bookingUpdatedBody', 'Rescheduled – message', { type: 'textarea', rows: 3 }),
+      T('bookingCancelledSubject', 'Cancelled – subject'), T('bookingCancelledBody', 'Cancelled – message', { type: 'textarea', rows: 3 }),
+      T('bookingDeclinedSubject', 'Declined – subject'), T('bookingDeclinedBody', 'Declined – message', { type: 'textarea', rows: 3 }),
+      T('bookingReminderSubject', 'Reminder – subject'), T('bookingReminderBody', 'Reminder – message', { type: 'textarea', rows: 3 }),
+      { k: 'h3', type: 'heading', label: 'Contact form & job applications' },
+      T('contactSubject', 'Contact form – reply subject'), T('contactBody', 'Contact form – reply message', { type: 'textarea', rows: 7, hint: 'Use {{name}} to insert the person’s first name.' }),
+      T('applicationSubject', 'Job application – reply subject'), T('applicationBody', 'Job application – reply message', { type: 'textarea', rows: 7 })],
+    notFound: [T('heading', 'Heading'), T('message', 'Message', { type: 'textarea', rows: 3 }), T('image', 'Photo inside the mirror', { type: 'image', hint: 'It forms the “0” of 404. A portrait photo works best.' }),
+      T('homeLabel', 'Home button', { half: 1 }), T('bookLabel', 'Booking button', { half: 1 }), T('linksHeading', 'Quick links heading', { half: 1 }), T('helpText', 'Help line', { half: 1, hint: 'Your phone number and WhatsApp link are added after it.' })],
+    scheduling: [
+      T('enabled', 'Accept online bookings', { type: 'bool', hint: 'Turn off to send visitors to your external booking link instead (Brand & SEO).' }),
+      T('autoConfirm', 'Confirm bookings automatically', { type: 'bool', hint: 'On: clients are confirmed instantly. Off: every booking waits for you to approve it.' }),
+      T('requireEmail', 'Ask clients for an email address', { type: 'bool', hint: 'Needed to send confirmations and reminders.' }),
+      { k: 'h1', type: 'heading', label: 'Opening hours for appointments', hint: 'These also appear in the Contact section and footer of your website.' },
+      { k: 'hours', type: 'rows', fixed: true, cols: [{ k: 'name', type: 'static' }, { k: 'open', type: 'bool', label: 'Open' }, { k: 'from', type: 'time', label: 'Opens' }, { k: 'to', type: 'time', label: 'Closes' }] },
+      { k: 'h2', type: 'heading', label: 'Rules' },
+      T('slotMinutes', 'Time between start times (minutes)', { type: 'select', half: 1, options: [10, 15, 20, 30, 45, 60].map((n) => ({ v: n, l: `Every ${n} minutes` })), hint: 'How often a new appointment can begin.' }),
+      T('leadHours', 'Minimum notice (hours)', { type: 'number', half: 1, min: 0, max: 168, hint: 'Clients cannot book closer to the appointment than this.' }),
+      T('advanceDays', 'How far ahead clients can book (days)', { type: 'number', half: 1, min: 1, max: 365 }),
+      T('bufferMinutes', 'Clean-up time between clients (minutes)', { type: 'number', half: 1, min: 0, max: 120 }),
+      T('maxServices', 'Most services per booking', { type: 'number', half: 1, min: 1, max: 12 }),
+      T('maxActive', 'Most upcoming bookings per client', { type: 'number', half: 1, min: 0, max: 20, hint: 'Stops one person reserving many slots. 0 = no limit.' }),
+      T('cancelHours', 'Clients can change or cancel until (hours before)', { type: 'number', half: 1, min: 0, max: 168 }),
+      T('reminderHours', 'Send a reminder email (hours before)', { type: 'number', half: 1, min: 0, max: 168, hint: '0 turns reminders off.' }),
+      T('timezone', 'Salon time zone', { hint: 'Leave as Africa/Nairobi unless you move.' })],
+    bookingUi: [
+      { k: 'h1', type: 'heading', label: 'Booking window wording' },
+      T('title', 'Title', { half: 1 }), T('stepServices', 'Step 1 heading', { half: 1 }), T('stepTime', 'Step 2 heading', { half: 1 }), T('stepDetails', 'Step 3 heading', { half: 1 }),
+      T('introServices', 'Step 1 intro', { type: 'textarea', rows: 2 }), T('introTime', 'Step 2 intro', { type: 'textarea', rows: 2 }), T('introDetails', 'Step 3 intro', { type: 'textarea', rows: 2 }),
+      T('confirmLabel', 'Confirm button (instant confirmation)', { half: 1 }), T('requestLabel', 'Request button (needs your approval)', { half: 1 }),
+      T('successTitle', 'Success title', { half: 1 }), T('successPendingTitle', 'Success title – awaiting approval', { half: 1 }),
+      T('successText', 'Success message', { type: 'textarea', rows: 2 }), T('successPendingText', 'Success message – awaiting approval', { type: 'textarea', rows: 2 }),
+      T('policy', 'Booking policy shown before confirming', { type: 'textarea', rows: 3, hint: 'Cancellation terms, deposits, lateness – this also goes in the confirmation email.' }),
+      T('consent', 'Consent checkbox text'),
+      { k: 'h2', type: 'heading', label: 'Home page booking bar' },
+      T('quickLabel', 'Bar title', { half: 1 }), T('quickPlaceholder', 'Placeholder', { half: 1 }), T('quickButton', 'Button text', { half: 1 }),
+      { k: 'h3', type: 'heading', label: '“How it works” strip' }, T('stepsHeading', 'Heading'),
+      { k: 'steps', type: 'rows', addLabel: 'Add step', cols: [{ k: 'icon', label: 'Icon name', placeholder: 'calendar-check' }, { k: 'title', label: 'Title' }, { k: 'text', label: 'Text', wide: true }] }],
   };
 
   // =========================================================
   // Small building blocks
   // =========================================================
+  const t12 = (hhmm) => { const [h, m] = String(hhmm).split(':').map(Number); return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`; };
   const page = (...kids) => h('div', { class: 'page' }, ...kids);
   const lede = (t) => h('p', { class: 'lede' }, t);
   const card = (title, sub, ...kids) => h('section', { class: 'card' }, title ? h('h2', {}, title) : null, sub ? h('p', { class: 'sub' }, sub) : null, ...kids);
@@ -82,10 +125,10 @@
       row.dataset.id = it.id;
       const ctl = (c) => {
         if (c.type === 'bool') return h('label', { class: 'switch', title: c.label }, h('input', { type: 'checkbox', checked: !!it[c.k], onchange: (e) => { row.style.opacity = e.target.checked ? 1 : .55; save(it.id, { [c.k]: e.target.checked }); } }), h('i'), h('span', {}, c.label));
-        return h('div', { class: 'c' + (c.wide ? ' wide' : '') }, h('small', {}, c.label), h('input', { class: 'in', type: 'text', value: it[c.k] ?? '', placeholder: c.placeholder || '', maxlength: 300, onchange: (e) => save(it.id, { [c.k]: e.target.value }) }));
+        return h('div', { class: 'c' + (c.wide ? ' wide' : '') }, h('small', {}, c.label), h('input', { class: 'in', type: c.type === 'number' ? 'number' : 'text', min: c.min, step: c.step, inputmode: c.type === 'number' ? 'numeric' : undefined, value: it[c.k] ?? '', placeholder: c.placeholder || '', maxlength: 300, onchange: (e) => save(it.id, { [c.k]: e.target.value }) }));
       };
       row.style.opacity = it.visible === 0 ? .55 : 1;
-      row.append(h('div', { class: 'mv' }, h('span', { class: 'grip', draggable: 'true', title: 'Drag to reorder' }, '⋮⋮'), h('button', { class: 'mini', 'aria-label': 'Move up', onclick: () => move(row, -1) && reorder() }, icon('up')), h('button', { class: 'mini', 'aria-label': 'Move down', onclick: () => move(row, 1) && reorder() }, icon('down'))),
+      row.append(h('div', { class: 'mv' }, h('span', { class: 'grip', draggable: 'true', title: 'Drag to reorder' }, icon('grip')), h('button', { class: 'mini', 'aria-label': 'Move up', onclick: () => move(row, -1) && reorder() }, icon('up')), h('button', { class: 'mini', 'aria-label': 'Move down', onclick: () => move(row, 1) && reorder() }, icon('down'))),
         h('div', { class: 'cols' }, ...cols.filter((c) => c.type !== 'bool').map(ctl)),
         h('div', { class: 'tail' }, ...cols.filter((c) => c.type === 'bool').map(ctl), h('button', { class: 'mini x', 'aria-label': 'Delete', onclick: async () => { if (await confirmBox(`Delete “${row.querySelector('input.in').value || 'this item'}”?`)) { try { await api.del(`/${endpoint}/${it.id}`); row.remove(); if (!box.children.length) box.append(empty(emptyText)); } catch (e) { fail(e); } } } }, icon('trash'))));
       return row;
@@ -105,13 +148,14 @@
   // =========================================================
   // Pages
   // =========================================================
+  const PROMO_ICONS = ['gift','cake-candles','gem','crown','star','heart','wand-magic-sparkles','spa','percent','tag','calendar-check','scissors'];
   const PAGES = {};
 
   // ----- Dashboard -----
   PAGES.dashboard = { title: 'Dashboard', render: async (el) => {
     const d = await api.get('/dashboard');
     const c = d.counts;
-    const tile = (n, label, href, badge) => h('a', { class: 'tile', href }, h('b', {}, String(n)), h('span', {}, label), badge ? h('em', {}, badge + ' new') : null);
+    const tile = (n, label, href, badge, word = 'new') => h('a', { class: 'tile', href }, h('b', {}, String(n)), h('span', {}, label), badge ? h('em', {}, badge + ' ' + word) : null);
     // 14-day activity sparkline
     const days = [...Array(14)].map((_, i) => { const t = new Date(); t.setDate(t.getDate() - (13 - i)); return t.toISOString().slice(0, 10); });
     const map = Object.fromEntries(d.series.map((s) => [String(s.d).slice(0, 10), +s.n]));
@@ -121,11 +165,12 @@
     el.append(page(
       !d.mailConfigured ? h('div', { class: 'callout' }, icon('mail'), h('div', {}, h('b', {}, 'Email is not switched on yet. '), 'Messages and applications are still saved here, but clients will not receive confirmation emails until you add EMAIL_USER and EMAIL_PASS to the server’s .env file.')) : null,
       lede(`Welcome back, ${me.name.split(' ')[0]}. Here is what is happening on your website.`),
-      h('div', { class: 'tiles' }, tile(c.messages, 'Messages', '#/messages', c.messagesNew), tile(c.applications, 'Job applications', '#/applications', c.applicationsNew), tile(c.reviews, 'Published reviews', '#/testimonials', c.reviewsPending ? c.reviewsPending : 0), tile(c.services, 'Services listed', '#/services'), tile(c.gallery, 'Gallery items', '#/gallery')),
+      h('div', { class: 'tiles' }, tile(d.bookings.today, 'Appointments today', '#/bookings'), tile(d.bookings.pending, 'Awaiting approval', '#/bookings?scope=pending'), tile(d.bookings.next7, 'Next 7 days', '#/bookings'), tile(c.messages, 'Messages', '#/messages', c.messagesNew), tile(c.applications, 'Job applications', '#/applications', c.applicationsNew), tile(c.reviews, 'Published reviews', '#/testimonials', c.reviewsPending, 'waiting')),
       h('div', { class: 'two' },
-        h('div', {}, card('Activity – last 14 days', 'New messages, applications and reviews.', spark),
+        h('div', {}, card("Today's schedule", d.onlineBooking ? null : 'Online booking is switched off.', d.bookings.today_list.length ? h('ul', { class: 'list' }, ...d.bookings.today_list.map((b) => h('li', {}, h('time', { style: 'min-width:92px;color:var(--ink);font-weight:700' }, t12(b.start) + ' – ' + t12(b.end)), h('div', { class: 'grow' }, h('a', { href: '#/bookings' }, b.name), h('small', {}, b.items.map((i) => i.name).join(', '))), h('span', { class: 'pill ' + b.status }, b.status)))) : empty('No appointments today.')),
+          card('Activity – last 14 days', 'New messages, applications and reviews.', spark),
           card('Latest messages', null, d.recentMessages.length ? h('ul', { class: 'list' }, ...d.recentMessages.map((m) => h('li', {}, h('div', { class: 'grow' }, h('a', { href: '#/messages' }, m.name), h('small', {}, m.message)), h('span', { class: 'pill ' + m.status }, m.status), h('time', {}, fmtDate(m.created_at))))) : empty('No messages yet.'))),
-        h('div', {}, card('Quick actions', null, h('div', { class: 'actions', style: 'margin:0' }, h('a', { class: 'btn', href: '#/services' }, icon('scissors'), 'Update prices'), h('a', { class: 'btn', href: '#/gallery' }, icon('image'), 'Add photos'), h('a', { class: 'btn', href: '#/promotions' }, icon('tag'), 'New promotion'), h('a', { class: 'btn', href: '/', target: '_blank' }, icon('ext'), 'View website'))),
+        h('div', {}, card('Quick actions', null, h('div', { class: 'actions', style: 'margin:0' }, h('a', { class: 'btn primary', href: '#/bookings?new=1' }, icon('plus'), 'New booking'), h('a', { class: 'btn', href: '#/services' }, icon('scissors'), 'Update prices'), h('a', { class: 'btn', href: '#/gallery' }, icon('image'), 'Add photos'), h('a', { class: 'btn', href: '#/promotions' }, icon('tag'), 'New promotion'), h('a', { class: 'btn', href: '/', target: '_blank' }, icon('ext'), 'View website'))),
           card('Latest applications', null, d.recentApplications.length ? h('ul', { class: 'list' }, ...d.recentApplications.map((m) => h('li', {}, h('div', { class: 'grow' }, h('a', { href: '#/applications' }, m.name), h('small', {}, m.position || 'General application')), h('time', {}, fmtDate(m.created_at))))) : empty('No applications yet.')),
           card('Recent changes', null, d.activity.length ? h('ul', { class: 'list' }, ...d.activity.map((a) => h('li', {}, h('div', { class: 'grow' }, a.user_name, h('small', {}, a.action)), h('time', {}, fmtDate(a.created_at))))) : empty('Nothing yet.')))),
     ));
@@ -135,14 +180,15 @@
   const simple = (title, group, sub, lead) => ({ title, render: (el) => el.append(page(lead ? lede(lead) : null, settingsCard(group, title, sub))) });
   PAGES.home = simple('Home', 'hero', 'The first thing visitors see.', 'The big welcome at the top of your website.');
   PAGES.about = simple('About', 'about', 'Tell your story – the founder, the team, the experience.');
-  PAGES.booking = simple('Booking', 'booking', 'The call-to-action band that sends visitors to your booking page.');
+  PAGES.booking = simple('Booking banner', 'booking', 'The call-to-action band that sends visitors to your booking page.');
   PAGES.contact = simple('Contact', 'contact', 'Details shown in the Contact section and footer.', 'Phone numbers, address, opening hours and social links appear in the Contact section, the footer and the floating WhatsApp button.');
   PAGES.privacy = simple('Privacy policy', 'privacy', 'Shown when visitors tap “Privacy Policy” in the footer.');
   PAGES.brand = { title: 'Brand & SEO', render: (el) => {
     const reset = h('button', { class: 'btn', onclick: async (e) => { if (!await confirmBox('Restore the original brand colours?', { okLabel: 'Restore', danger: false })) return; try { await api.put('/settings/theme', { green: '#1A5B38', gold: '#D4AC52', ground: '#2A2519' }); toast('Colours restored.'); route(); } catch (x) { fail(x); } } }, 'Restore original colours');
     el.append(page(lede('Your name, logo, booking link, how you appear on Google, and the colours of the website.'), settingsCard('brand', 'Business & links'), settingsCard('seo', 'Google & social sharing'), settingsCard('theme', 'Colours', 'Pick the three brand colours. Changes apply across the whole website.', { extra: reset })));
   } };
-  PAGES.navigation = { title: 'Navigation', render: (el) => el.append(page(lede('Rename sections, hide them from the menu, or take a section off the website entirely. The order is fixed so the page always flows well.'), settingsCard('sections', 'Sections & menu'))) };
+  PAGES.navigation = { title: 'Navigation & 404', render: (el) => el.append(page(lede('Rename sections, hide them from the menu, or take a section off the website entirely. The order is fixed so the page always flows well. Below it, the page visitors see when a link does not exist.'), settingsCard('sections', 'Sections & menu'),
+    settingsCard('notFound', '404 page', 'Shown whenever someone opens an address that does not exist.', { extra: h('a', { class: 'btn', href: '/page-not-found-preview', target: '_blank', rel: 'noopener' }, icon('ext'), 'Preview 404 page') }))) };
   PAGES.email = { title: 'Email', render: (el) => {
     const to = h('input', { class: 'in', type: 'text', placeholder: 'you@example.com', style: 'max-width:260px' });
     const test = card('Send a test email', mailConfigured ? 'Check that your email connection works.' : 'Email is not configured on the server yet – add EMAIL_USER and EMAIL_PASS to the .env file, then restart.', h('div', { style: 'display:flex;gap:10px;flex-wrap:wrap' }, to, h('button', { class: 'btn', onclick: async (e) => { e.target.disabled = true; try { await api.post('/email/test', { to: to.value }); toast('Test email sent.'); } catch (x) { fail(x); } finally { e.target.disabled = false; } } }, icon('mail'), 'Send test')));
@@ -163,7 +209,7 @@
     }
     function drawLeft() {
       const list = h('div', { class: 'catlist' }, ...cats.map((c) => { const b = h('div', { class: 'cat' + (c.id === sel ? ' on' : '') + (c.visible ? '' : ' off'), role: 'button', tabindex: 0, onclick: () => { const sp = b.closest('.split'); sel = c.id; drawLeft(); drawRight(); sp?.classList.add('detail-open'); }, onkeydown: (e) => e.key === 'Enter' && b.click() },
-        h('span', { class: 'grip', draggable: 'true' }, '⋮⋮'), h('div', { class: 'nm' }, c.name, h('small', {}, c.visible ? '' : 'Hidden')),
+        h('span', { class: 'grip', draggable: 'true' }, icon('grip')), h('div', { class: 'nm' }, c.name, h('small', {}, c.visible ? '' : 'Hidden')),
         h('button', { class: 'mini', 'aria-label': 'Up', onclick: (e) => { e.stopPropagation(); if (move(b, -1)) saveOrder(list); } }, icon('up')), h('button', { class: 'mini', 'aria-label': 'Down', onclick: (e) => { e.stopPropagation(); if (move(b, 1)) saveOrder(list); } }, icon('down')));
         b.dataset.id = c.id; return b; }));
       sortable(list, '.cat', () => saveOrder(list));
@@ -178,10 +224,10 @@
           h('button', { class: 'btn sm', onclick: () => catForm(c, async (d) => { await api.put('/categories/' + c.id, d); toast('Category saved.'); await loadCats(); }) }, 'Edit category & photos'),
           h('button', { class: 'btn sm danger', onclick: async () => { if (await confirmBox(`Delete “${c.name}” and all of its services?`)) { try { await api.del('/categories/' + c.id); toast('Category deleted.'); sel = null; await loadCats(); } catch (e) { fail(e); } } } }, icon('trash'), 'Delete')),
         h('div', { class: 'grid2', style: 'margin-bottom:14px' }, h('div', { class: 'imgfield' }, thumb(c.image_a), thumb(c.image_b))),
-        inlineList({ endpoint: 'items', query: '?category_id=' + c.id, addLabel: 'Add service', emptyText: 'No services yet – add the first one below. Categories without prices show your “consultation” message instead.', make: () => ({ category_id: c.id, name: 'New service', price: '', note: '', visible: true }),
-          cols: [{ k: 'name', label: 'Service' }, { k: 'price', label: 'Price (KES)', placeholder: '3,000 or 3,000 - 7,000' }, { k: 'note', label: 'Note (optional)' }, { k: 'visible', type: 'bool', label: 'Show' }] })));
+        inlineList({ endpoint: 'items', query: '?category_id=' + c.id, addLabel: 'Add service', emptyText: 'No services yet – add the first one below. Categories without prices show your “consultation” message instead.', make: () => ({ category_id: c.id, name: 'New service', price: '', note: '', duration_min: 60, bookable: true, visible: true }),
+          cols: [{ k: 'name', label: 'Service' }, { k: 'price', label: 'Price (KES)', placeholder: '3,000 or 3,000 - 7,000' }, { k: 'duration_min', type: 'number', label: 'Minutes', min: 5, step: 5 }, { k: 'note', label: 'Note (optional)' }, { k: 'bookable', type: 'bool', label: 'Bookable' }, { k: 'visible', type: 'bool', label: 'Show' }] })));
     }
-    el.append(page(lede('Your price list. Pick a category on the left, then edit names and prices right in the list. Drag the ⋮⋮ handle (or use the arrows) to reorder.'),
+    el.append(page(lede('Your price list. Pick a category on the left, then edit names and prices right in the list. “Minutes” is how long the service takes – it decides how much calendar time a booking uses. Only services marked Bookable can be booked online.'),
       h('div', { class: 'split' }, left, right), settingsCard('servicesSection', 'Section wording', 'The headings and labels around the price list.')));
     loadCats().catch(fail);
   } };
@@ -213,13 +259,13 @@
     const list = h('div', { class: 'rows' });
     const state = (p) => { const t = new Date().toISOString().slice(0, 10); return !p.visible ? ['Hidden', 'hidden'] : p.starts_on && p.starts_on > t ? ['Scheduled', 'pending'] : p.ends_on && p.ends_on < t ? ['Expired', 'hidden'] : ['Live', 'approved']; };
     function edit(p) {
-      const form = buildForm([T('title', 'Title', { hint: 'You can start with an emoji, e.g. 🎉 Birthday special' }), T('body', 'Description', { type: 'textarea', rows: 3 }), T('cta_label', 'Button text (optional)', { half: 1 }), T('cta_url', 'Button link (optional)', { half: 1, type: 'url', hint: 'Empty = your booking link.' }), T('starts_on', 'Starts on (optional)', { half: 1, type: 'date' }), T('ends_on', 'Ends on (optional)', { half: 1, type: 'date', hint: 'It disappears from the website after this date.' }), T('visible', 'Show on website', { type: 'bool' })], { ...p, visible: p.id ? p.visible !== 0 : true });
+      const form = buildForm([T('icon', 'Icon', { type: 'select', half: 1, options: PROMO_ICONS.map((v) => ({ v, l: v.replace(/-/g, ' ').replace(/^./, (x) => x.toUpperCase()) })) }), T('title', 'Title', { half: 1 }), T('body', 'Description', { type: 'textarea', rows: 3 }), T('cta_label', 'Button text (optional)', { half: 1 }), T('cta_url', 'Button link (optional)', { half: 1, type: 'url', hint: 'Empty = your booking link.' }), T('starts_on', 'Starts on (optional)', { half: 1, type: 'date' }), T('ends_on', 'Ends on (optional)', { half: 1, type: 'date', hint: 'It disappears from the website after this date.' }), T('visible', 'Show on website', { type: 'bool' })], { ...p, visible: p.id ? p.visible !== 0 : true });
       const dlg = modal({ title: p.id ? 'Edit promotion' : 'New promotion', body: form.el, foot: [h('button', { class: 'btn', onclick: () => dlg.close() }, 'Cancel'), h('button', { class: 'btn primary', onclick: async () => { const d = form.get(); if (!d.title.trim()) return toast('Please enter a title.', 'err'); try { p.id ? await api.put('/promotions/' + p.id, d) : await api.post('/promotions', d); dlg.close(); toast('Saved.'); load(); } catch (e) { fail(e); } } }, 'Save')] });
     }
     async function load() {
       const items = await api.get('/promotions');
-      list.replaceChildren(...(items.length ? items.map((p) => { const [lab, cls] = state(p); const row = h('div', { class: 'row' }, h('div', { class: 'mv' }, h('span', { class: 'grip', draggable: 'true' }, '⋮⋮'), h('button', { class: 'mini', 'aria-label': 'Up', onclick: () => move(row, -1) && save() }, icon('up')), h('button', { class: 'mini', 'aria-label': 'Down', onclick: () => move(row, 1) && save() }, icon('down'))),
-        h('div', { style: 'flex:1;min-width:0' }, h('b', {}, p.title), h('div', { class: 'hint', style: 'margin:2px 0 6px' }, p.body.length > 140 ? p.body.slice(0, 140) + '…' : p.body), h('span', { class: 'pill ' + cls }, lab), p.starts_on || p.ends_on ? h('span', { class: 'hint', style: 'margin-left:8px' }, `${p.starts_on || '…'} → ${p.ends_on || '…'}`) : null),
+      list.replaceChildren(...(items.length ? items.map((p) => { const [lab, cls] = state(p); const row = h('div', { class: 'row' }, h('div', { class: 'mv' }, h('span', { class: 'grip', draggable: 'true' }, icon('grip')), h('button', { class: 'mini', 'aria-label': 'Up', onclick: () => move(row, -1) && save() }, icon('up')), h('button', { class: 'mini', 'aria-label': 'Down', onclick: () => move(row, 1) && save() }, icon('down'))),
+        h('div', { style: 'flex:1;min-width:0' }, h('b', {}, p.title), p.icon ? h('span', { class: 'hint', style: 'margin-left:8px' }, '· ' + p.icon.replace(/-/g, ' ')) : null, h('div', { class: 'hint', style: 'margin:2px 0 6px' }, p.body.length > 140 ? p.body.slice(0, 140) + '…' : p.body), h('span', { class: 'pill ' + cls }, lab), p.starts_on || p.ends_on ? h('span', { class: 'hint', style: 'margin-left:8px' }, `${p.starts_on || '…'} → ${p.ends_on || '…'}`) : null),
         h('div', { class: 'tail' }, h('button', { class: 'btn sm', onclick: () => edit(p) }, 'Edit'), h('button', { class: 'mini x', 'aria-label': 'Delete', onclick: async () => { if (await confirmBox(`Delete “${p.title}”?`)) { try { await api.del('/promotions/' + p.id); load(); } catch (e) { fail(e); } } } }, icon('trash')))); row.dataset.id = p.id; return row; }) : [empty('No promotions yet. Add one to show the offers section on your website.')]));
     }
     const save = () => api.post('/promotions/reorder', { ids: [...list.children].map((c) => c.dataset.id) }).catch(fail);
@@ -235,8 +281,7 @@
   // ----- Testimonials -----
   PAGES.testimonials = { title: 'Testimonials', render: (el) => {
     let filter = 'all', items = []; const list = h('div', { class: 'rows' }), tabs = h('div', { class: 'tabs' });
-    const stars = (n) => '★'.repeat(n) + '☆'.repeat(5 - n);
-    function edit(r) {
+        function edit(r) {
       const form = buildForm([T('client_name', 'Name', { half: 1 }), T('client_type', 'Type', { half: 1, hint: 'e.g. Customer' }), T('stars', 'Stars', { type: 'select', half: 1, options: [5, 4, 3, 2, 1].map((n) => ({ v: n, l: `${n} stars` })) }), T('status', 'Status', { type: 'select', half: 1, options: [{ v: 'approved', l: 'Published' }, { v: 'pending', l: 'Waiting for approval' }, { v: 'hidden', l: 'Hidden' }] }), T('comment', 'Review', { type: 'textarea', rows: 4 }), T('feedback', 'Your reply (shown under the review)', { type: 'textarea', rows: 2 })], { client_type: 'Customer', stars: 5, status: 'approved', ...r });
       const dlg = modal({ title: r.id ? 'Edit review' : 'Add a testimonial', body: form.el, foot: [h('button', { class: 'btn', onclick: () => dlg.close() }, 'Cancel'), h('button', { class: 'btn primary', onclick: async () => { const d = form.get(); d.stars = +d.stars; if (!d.client_name.trim() || !d.comment.trim()) return toast('Name and review are required.', 'err'); try { r.id ? await api.put('/ratings/' + r.id, d) : await api.post('/ratings', d); dlg.close(); toast('Saved.'); load(); } catch (e) { fail(e); } } }, 'Save')] });
     }
@@ -245,7 +290,7 @@
       const n = (s) => items.filter((i) => i.status === s).length;
       tabs.replaceChildren(...[['all', `All (${items.length})`], ['pending', `Waiting (${n('pending')})`], ['approved', `Published (${n('approved')})`], ['hidden', `Hidden (${n('hidden')})`]].map(([k, l]) => h('button', { class: filter === k ? 'on' : '', onclick: () => { filter = k; draw(); } }, l)));
       const vis = items.filter((i) => filter === 'all' || i.status === filter);
-      list.replaceChildren(...(vis.length ? vis.map((r) => h('div', { class: 'row' }, h('div', { style: 'flex:1;min-width:0' }, h('div', { style: 'display:flex;gap:10px;flex-wrap:wrap;align-items:center' }, h('b', {}, r.client_name), h('span', { style: 'color:#b07614;letter-spacing:2px' }, stars(r.stars)), h('span', { class: 'pill ' + r.status }, r.status === 'approved' ? 'Published' : r.status === 'pending' ? 'Waiting' : 'Hidden'), h('span', { class: 'hint' }, fmtDate(r.created_at))),
+      list.replaceChildren(...(vis.length ? vis.map((r) => h('div', { class: 'row' }, h('div', { style: 'flex:1;min-width:0' }, h('div', { style: 'display:flex;gap:10px;flex-wrap:wrap;align-items:center' }, h('b', {}, r.client_name), A.stars(r.stars), h('span', { class: 'pill ' + r.status }, r.status === 'approved' ? 'Published' : r.status === 'pending' ? 'Waiting' : 'Hidden'), h('span', { class: 'hint' }, fmtDate(r.created_at))),
         h('p', { style: 'margin:6px 0' }, r.comment), r.feedback ? h('div', { class: 'hint' }, 'Your reply: ' + r.feedback) : null),
         h('div', { class: 'tail', style: 'flex-wrap:wrap;justify-content:flex-end' }, r.status !== 'approved' ? h('button', { class: 'btn sm primary', onclick: () => setStatus(r, 'approved') }, 'Publish') : h('button', { class: 'btn sm', onclick: () => setStatus(r, 'hidden') }, 'Hide'), h('button', { class: 'btn sm', onclick: () => edit(r) }, 'Edit / reply'), h('button', { class: 'mini x', 'aria-label': 'Delete', onclick: async () => { if (await confirmBox(`Delete the review from ${r.client_name}?`)) { try { await api.del('/ratings/' + r.id); load(); } catch (e) { fail(e); } } } }, icon('trash'))))) : [empty('No reviews here.')]));
     }
@@ -343,21 +388,22 @@
   // =========================================================
   const NAV = [
     ['Overview', [['dashboard', 'Dashboard', 'dash']]],
-    ['Website', [['home', 'Home', 'home'], ['about', 'About', 'user'], ['services', 'Services', 'scissors'], ['gallery', 'Gallery', 'image'], ['booking', 'Booking', 'tag'], ['contact', 'Contact', 'phone'], ['work', 'Work with us', 'brief'], ['promotions', 'Promotions', 'tag'], ['testimonials', 'Testimonials', 'star'], ['privacy', 'Privacy policy', 'shield']]],
+    ['Bookings', [['bookings', 'Appointments', 'calendar'], ['schedule', 'Schedule & hours', 'clock'], ['specialists', 'Specialists', 'users'], ['closures', 'Closures & time off', 'ban']]],
+    ['Website', [['home', 'Home', 'home'], ['about', 'About', 'user'], ['services', 'Services', 'scissors'], ['gallery', 'Gallery', 'image'], ['booking', 'Booking banner', 'tag'], ['contact', 'Contact', 'phone'], ['work', 'Work with us', 'brief'], ['promotions', 'Promotions', 'tag'], ['testimonials', 'Testimonials', 'star'], ['privacy', 'Privacy policy', 'shield']]],
     ['Inbox', [['messages', 'Messages', 'mail'], ['applications', 'Applications', 'folder']]],
-    ['Manage', [['media', 'Media library', 'image'], ['brand', 'Brand & SEO', 'palette'], ['navigation', 'Navigation', 'nav'], ['email', 'Email', 'mail'], ['users', 'Team', 'users'], ['account', 'My account', 'lock']]],
+    ['Manage', [['media', 'Media library', 'image'], ['brand', 'Brand & SEO', 'palette'], ['navigation', 'Navigation & 404', 'nav'], ['email', 'Email', 'mail'], ['users', 'Team', 'users'], ['account', 'My account', 'lock']]],
   ];
   let brandInfo = { name: 'Elixir', logo: '/resources/elixir_logo.png' };
 
   async function refreshCounts() {
-    try { const d = await api.get('/dashboard'); counts = d.counts; mailConfigured = d.mailConfigured; const set = (id, n) => { const b = document.getElementById('b-' + id); if (b) { b.textContent = n; b.classList.toggle('hide', !n); } }; set('messages', counts.messagesNew); set('applications', counts.applicationsNew); set('testimonials', counts.reviewsPending); } catch { /* ignore */ }
+    try { const d = await api.get('/dashboard'); counts = d.counts; mailConfigured = d.mailConfigured; const set = (id, n) => { const b = document.getElementById('b-' + id); if (b) { b.textContent = n; b.classList.toggle('hide', !n); } }; set('messages', counts.messagesNew); set('bookings', d.bookings ? d.bookings.pending : 0); set('applications', counts.applicationsNew); set('testimonials', counts.reviewsPending); } catch { /* ignore */ }
   }
   async function refreshShellIdentity() { try { const s = await api.get('/settings'); brandInfo = { name: s.brand.name, logo: s.brand.logo }; const i = document.querySelector('.brand img'), n = document.querySelector('.brand b'); if (i) i.src = brandInfo.logo; if (n) n.textContent = brandInfo.name; } catch { /* ignore */ } }
 
   function shell() {
     const nav = h('nav', { 'aria-label': 'Admin' }, ...NAV.map(([group, links]) => {
       const vis = links.filter(([k]) => !(PAGES[k]?.owner && me.role !== 'owner'));
-      return h('div', { class: 'nav-group' }, h('small', {}, group), ...vis.map(([k, label, ic]) => h('a', { class: 'nav-item', href: '#/' + k, 'data-k': k }, icon(ic), label, ['messages', 'applications', 'testimonials'].includes(k) ? h('span', { class: 'badge hide', id: 'b-' + k }) : null)));
+      return h('div', { class: 'nav-group' }, h('small', {}, group), ...vis.map(([k, label, ic]) => h('a', { class: 'nav-item', href: '#/' + k, 'data-k': k }, icon(ic), label, ['messages', 'applications', 'testimonials', 'bookings'].includes(k) ? h('span', { class: 'badge hide', id: 'b-' + k }) : null)));
     }));
     root.replaceChildren(h('div', { class: 'shell' },
       h('aside', { class: 'side' }, h('div', { class: 'brand' }, h('img', { src: brandInfo.logo, alt: '' }), h('div', {}, h('b', {}, brandInfo.name), h('span', {}, 'Admin panel'))), nav,
@@ -402,5 +448,6 @@
   }
   A.onUnauthorized = () => { if (me) { me = null; toast('Your session ended – please sign in again.', 'err'); setTimeout(() => start(), 600); } };
   window.addEventListener('hashchange', () => me && route());
-  start();
+  // Shared with admin-bookings.js, then admin-boot.js starts everything.
+  Object.assign(A, { PAGES, NAV, SCHEMA, T, t12, page, lede, card, empty, settingsCard, inlineList, route, refreshCounts, start, me: () => me, mailConfigured: () => mailConfigured });
 })();

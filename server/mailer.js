@@ -1,3 +1,4 @@
+// Outgoing email. Sent FROM the mailbox in .env (info@…); client replies go to the "Reply-To" address in Admin > Email (admin@…).
 const nodemailer = require('nodemailer');
 const config = require('./config');
 const db = require('./db');
@@ -9,7 +10,7 @@ function getTransporter() {
   if (!m.user || !m.pass) { transporter = null; return null; }
   transporter = nodemailer.createTransport(
     m.host
-      ? { host: m.host, port: m.port, secure: m.secure, auth: { user: m.user, pass: m.pass } }
+      ? { host: m.host, port: m.port, secure: m.secure, auth: { user: m.user, pass: m.pass }, tls: { rejectUnauthorized: m.rejectUnauthorized }, connectionTimeout: 15000, greetingTimeout: 15000, socketTimeout: 30000 }
       : { service: 'gmail', auth: { user: m.user, pass: m.pass } }
   );
   return transporter;
@@ -18,68 +19,85 @@ function getTransporter() {
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fill = (tpl, vars) => String(tpl || '').replace(/{{\s*(\w+)\s*}}/g, (_, k) => (vars[k] ?? ''));
 
-function render({ brand, email, contact }, bodyText, vars, withBooking) {
-  const paragraphs = fill(bodyText, vars)
-    .split(/\n{2,}/)
-    .map((p) => `<p style="margin:0 0 16px;line-height:1.65">${esc(p).replace(/\n/g, '<br>')}</p>`)
-    .join('');
-  const site = config.siteUrl || '#';
-  const btn = withBooking && brand.bookingUrl
-    ? `<p style="margin:24px 0"><a href="${esc(brand.bookingUrl)}" style="display:inline-block;padding:12px 28px;background:#D4AC52;color:#1b1608;font-weight:700;text-decoration:none;border-radius:8px">Book an Appointment</a></p>`
-    : '';
-  return `<!doctype html><html><body style="margin:0;background:#2A2519;padding:24px;font-family:Arial,Helvetica,sans-serif">
-  <div style="max-width:600px;margin:0 auto;background:#1A5B38;border-radius:14px;overflow:hidden;border-bottom:4px solid #D4AC52">
-    <div style="padding:22px 32px;border-bottom:1px solid rgba(212,172,82,.45);color:#EBCE27;font-size:20px;font-weight:700;letter-spacing:.5px">${esc(brand.name)}</div>
-    <div style="padding:28px 32px;color:#f6f1dc;font-size:15px">${paragraphs}${btn}
-      <p style="margin:24px 0 0;line-height:1.6">Warm regards,<br><strong style="color:#EBCE27">The ${esc(brand.name)} Team</strong></p>
-    </div>
-    <div style="padding:18px 32px;background:rgba(0,0,0,.25);color:#cfc6a0;font-size:13px;line-height:1.7">
-      ${esc(email.address || contact.address)}<br>
-      ${esc(contact.phone)}${contact.phone2 ? ' / ' + esc(contact.phone2) : ''}<br>
-      ${esc(contact.email)} &middot; <a href="${esc(site)}" style="color:#EBCE27;text-decoration:none">${esc(site.replace(/^https?:\/\//, ''))}</a>
-    </div>
-  </div></body></html>`;
-}
-
-async function send({ to, subject, html, text, replyTo }) {
-  const t = getTransporter();
-  const s = (await db.getSetting('email')) || {};
-  if (!t) { console.log(`[mail skipped – EMAIL_USER/EMAIL_PASS not set] → ${to}: ${subject}`); return { skipped: true }; }
-  await t.sendMail({ from: `"${s.fromName || 'Elixir Salon & Spa'}" <${config.mail.user}>`, to, subject, html, text, replyTo });
-  return { sent: true };
-}
-
 async function ctx() {
   const [brand, email, contact] = await Promise.all([db.getSetting('brand'), db.getSetting('email'), db.getSetting('contact')]);
   return { brand: brand || {}, email: email || {}, contact: contact || {} };
 }
 
-// Fire-and-forget helpers – a mail failure must never break a form submission.
-async function contactReceipt(name, to) {
+async function record(to, subject, kind, status, error, bookingId) {
   try {
-    const c = await ctx();
-    const first = String(name).trim().split(/\s+/)[0];
-    await send({ to, subject: fill(c.email.contactSubject, { name: first }), html: render(c, c.email.contactBody, { name: first }, true) });
-  } catch (e) { console.error('Contact receipt email failed:', e.message); }
+    await db.q('INSERT INTO email_log (to_addr, subject, kind, status, error, booking_id) VALUES (?, ?, ?, ?, ?, ?)', [String(to).slice(0, 250), String(subject).slice(0, 290), kind || '', status, String(error || '').slice(0, 480), bookingId || null]);
+    db.q('DELETE FROM email_log WHERE id < (SELECT m FROM (SELECT MAX(id) - 400 AS m FROM email_log) t)').catch(() => {});
+  } catch { /* logging must never break a send */ }
+}
+
+// Low-level send. Never throws – returns { status: 'sent' | 'failed' | 'skipped', error? } and records it in the delivery log.
+async function deliver({ to, subject, html, text, replyTo, ical, kind = '', bookingId = null }) {
+  if (!to) return { status: 'skipped', error: 'No recipient' };
+  const t = getTransporter();
+  if (!t) {
+    console.log(`[mail skipped – email not configured] -> ${to}: ${subject}`);
+    await record(to, subject, kind, 'skipped', 'Email is not configured on the server', bookingId);
+    return { status: 'skipped', error: 'Email is not configured' };
+  }
+  const e = (await db.getSetting('email')) || {};
+  try {
+    await t.sendMail({
+      from: `"${e.fromName || 'Elixir Salon & Spa'}" <${config.mail.from}>`, to, subject, html, text,
+      replyTo: replyTo || e.replyTo || undefined,
+      icalEvent: ical ? { method: 'PUBLISH', filename: 'appointment.ics', content: ical } : undefined,
+    });
+    await record(to, subject, kind, 'sent', '', bookingId);
+    return { status: 'sent' };
+  } catch (err) {
+    console.error(`Email to ${to} failed:`, err.message);
+    await record(to, subject, kind, 'failed', err.message, bookingId);
+    return { status: 'failed', error: err.message };
+  }
+}
+
+async function verify() {
+  const t = getTransporter();
+  const info = { configured: !!t, host: config.mail.host || (t ? 'gmail' : ''), port: config.mail.port, user: config.mail.user, from: config.mail.from };
+  if (!t) return { ...info, ok: false, error: 'EMAIL_USER and EMAIL_PASS are not set in the server .env file.' };
+  try { await t.verify(); return { ...info, ok: true }; } catch (e) { return { ...info, ok: false, error: e.message }; }
+}
+
+// ---------- branded HTML shell ----------
+const GOLD = '#D4AC52', GREEN = '#1A5B38', UMBER = '#2A2519';
+function shell({ brand, email, contact }, inner, { footerExtra = '' } = {}) {
+  return `<!doctype html><html><body style="margin:0;background:${UMBER};padding:24px 12px;font-family:Arial,Helvetica,sans-serif">
+  <div style="max-width:620px;margin:0 auto;background:${GREEN};border-radius:16px;overflow:hidden;border-bottom:4px solid ${GOLD}">
+    <div style="padding:22px 32px;border-bottom:1px solid rgba(212,172,82,.45);color:#EBCE27;font-size:20px;font-weight:700;letter-spacing:.5px">${esc(brand.name)}</div>
+    <div style="padding:28px 32px;color:#f6f1dc;font-size:15px;line-height:1.65">${inner}
+      <p style="margin:24px 0 0">Warm regards,<br><strong style="color:#EBCE27">The ${esc(brand.name)} Team</strong></p></div>
+    <div style="padding:18px 32px;background:rgba(0,0,0,.25);color:#cfc6a0;font-size:13px;line-height:1.7">
+      ${esc(email.address || contact.address)}<br>${esc(contact.phone)}${contact.phone2 ? ' / ' + esc(contact.phone2) : ''}<br>
+      <a href="mailto:${esc(contact.email)}" style="color:#EBCE27;text-decoration:none">${esc(contact.email)}</a>${footerExtra}
+    </div></div></body></html>`;
+}
+const paragraphs = (text, vars) => fill(text, vars).split(/\n{2,}/).map((p) => `<p style="margin:0 0 16px">${esc(p).replace(/\n/g, '<br>')}</p>`).join('');
+const button = (href, label, primary = true) => `<a href="${esc(href)}" style="display:inline-block;margin:6px 8px 6px 0;padding:12px 24px;border-radius:9px;font-weight:700;text-decoration:none;${primary ? `background:${GOLD};color:#1b1608` : `border:1.5px solid ${GOLD};color:#EBCE27`}">${esc(label)}</a>`;
+
+// ---------- form receipts (existing features) ----------
+async function contactReceipt(name, to) {
+  const c = await ctx(); const first = String(name).trim().split(/\s+/)[0]; const vars = { name: first };
+  const bookBtn = c.brand.name ? `<p style="margin:24px 0">${button((config.siteUrl || '') + '/?book=1', 'Book an Appointment')}</p>` : '';
+  return deliver({ to, kind: 'contact', subject: fill(c.email.contactSubject, vars), html: shell(c, paragraphs(c.email.contactBody, vars) + bookBtn), text: fill(c.email.contactBody, vars) });
 }
 async function applicationReceipt(name, to) {
-  try {
-    const c = await ctx();
-    const first = String(name).trim().split(/\s+/)[0];
-    await send({ to, subject: fill(c.email.applicationSubject, { name: first }), html: render(c, c.email.applicationBody, { name: first }, false) });
-  } catch (e) { console.error('Application receipt email failed:', e.message); }
+  const c = await ctx(); const first = String(name).trim().split(/\s+/)[0]; const vars = { name: first };
+  return deliver({ to, kind: 'application', subject: fill(c.email.applicationSubject, vars), html: shell(c, paragraphs(c.email.applicationBody, vars)), text: fill(c.email.applicationBody, vars) });
 }
-async function notifyStaff(subject, lines, replyTo) {
-  try {
-    const c = await ctx();
-    if (!c.email.notifyTo) return;
-    const html = `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6">${lines.map((l) => `<p style="margin:0 0 8px">${esc(l)}</p>`).join('')}<p style="color:#777;font-size:13px">Open the admin panel to manage this.</p></div>`;
-    await send({ to: c.email.notifyTo, subject, html, replyTo });
-  } catch (e) { console.error('Staff notification failed:', e.message); }
+async function notifyStaff(subject, lines, replyTo, kind = 'alert') {
+  const c = await ctx();
+  if (!c.email.notifyTo) return { status: 'skipped' };
+  const html = `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6">${lines.map((l) => `<p style="margin:0 0 8px">${esc(l)}</p>`).join('')}<p style="color:#777;font-size:13px">Open the admin panel to manage this.</p></div>`;
+  return deliver({ to: c.email.notifyTo, subject, html, text: lines.join('\n'), replyTo, kind });
 }
 async function testEmail(to) {
   const c = await ctx();
-  return send({ to, subject: 'Test email from your Elixir admin panel', html: render(c, 'Hi {{name}},\n\nThis is a test. If you can read this, your email settings work.', { name: 'there' }, true) });
+  return deliver({ to, kind: 'test', subject: 'Test email from your Elixir admin panel', html: shell(c, paragraphs('Hi there,\n\nThis is a test. If you can read this, your email settings work and clients will receive their confirmations from this address.', {})), text: 'This is a test email from your Elixir admin panel.' });
 }
 
-module.exports = { contactReceipt, applicationReceipt, notifyStaff, testEmail, isConfigured: () => !!getTransporter() };
+module.exports = { deliver, verify, shell, paragraphs, button, fill, esc, ctx, contactReceipt, applicationReceipt, notifyStaff, testEmail, isConfigured: () => !!getTransporter() };

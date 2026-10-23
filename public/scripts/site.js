@@ -35,22 +35,41 @@
   const sec = (key) => D.settings.sections.find((s) => s.key === key) || { label: '', id: key };
   const wrapSection = (key, inner, cls = '') => `<section id="${esc(sec(key).id)}" class="section ${cls}" aria-label="${esc(sec(key).label)}"><div class="wrap">${inner}</div></section>`;
 
+  const durTxt = (m) => { const h = Math.floor(m / 60), r = m % 60; return h ? (r ? `${h} hr ${r} min` : `${h} hr`) : `${m} min`; };
+  const icoName = (n, d = 'star') => (/^[a-z0-9-]{1,40}$/.test(n || '') ? n : d);
+  const bookOn = () => !!(D.scheduling && D.scheduling.enabled);
+  // Opening hours come from the booking schedule (Admin > Schedule), grouped: "Tue – Fri: 07:30 – 20:00".
+  function hoursRows() {
+    const sch = D.scheduling && D.scheduling.hours;
+    if (!sch) return (D.settings.contact.hours || []).filter((h) => h.days);
+    const order = [1, 2, 3, 4, 5, 6, 0], N = { 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat', 0: 'Sun' };
+    const by = Object.fromEntries(sch.map((x) => [x.day, x])), key = (x) => (x.open ? `${x.from}-${x.to}` : 'closed');
+    const rows = []; let i = 0;
+    while (i < order.length) {
+      let j = i; while (j + 1 < order.length && key(by[order[j + 1]]) === key(by[order[i]])) j++;
+      const x = by[order[i]];
+      rows.push({ days: i === j ? N[order[i]] : `${N[order[i]]} – ${N[order[j]]}`, time: x.open ? `${x.from} – ${x.to}` : 'Closed' });
+      i = j + 1;
+    }
+    return rows;
+  }
+
   function header() {
     const links = D.settings.sections.filter((s) => s.nav && s.visible);
     const nav = (cls) => links.map((s) => `<a class="${cls}" href="#${esc(s.id)}">${esc(s.label)}</a>`).join('');
-    const b = D.settings.brand;
+    const b = D.settings.brand, bk = esc(safe(b.bookingUrl)), on = bookOn() ? ' data-book' : '';
     return `
     <header class="header" id="top"><div class="header-in">
       <a class="logo-tab" href="#${esc(sec('home').id)}" aria-label="${esc(b.name)} – home"><img src="${esc(safe(b.logo))}" alt=""></a>
-      <nav class="nav" aria-label="Main">${nav('nl')}<a class="btn desk" href="${esc(safe(b.bookingUrl))}" style="color:#1b1608;border:0">Book Now</a></nav>
-      <a class="btn mob" href="${esc(safe(b.bookingUrl))}" style="margin-left:auto">Book Now</a>
+      <nav class="nav" aria-label="Main">${nav('nl')}<a class="btn desk" href="${bk}"${on}><i class="fa-regular fa-calendar-check"></i> Book Now</a></nav>
+      <a class="btn mob" href="${bk}"${on}>Book Now</a>
       <button class="burger" id="burger" aria-label="Open menu" aria-expanded="false"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
     </div></header>
     <div class="drawer" id="drawer" aria-hidden="true"><div class="drawer-bg" data-close></div>
       <aside class="drawer-panel" aria-label="Menu">
         <div class="drawer-top"><img src="${esc(safe(b.logo))}" alt=""><button class="burger" data-close aria-label="Close menu" style="display:block"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg></button></div>
         ${nav('dl')}
-        <a class="btn" href="${esc(safe(b.bookingUrl))}">Book Appointment Now</a>
+        <a class="btn" href="${bk}"${on}><i class="fa-regular fa-calendar-check"></i> Book Appointment Now</a>
       </aside></div>`;
   }
 
@@ -58,20 +77,41 @@
     const h = D.settings.hero;
     const slides = (h.slides || []).filter(Boolean);
     const stats = (h.stats || []).filter((s) => s.value || s.label);
-    return `<section id="${esc(sec('home').id)}" class="hero" aria-label="${esc(sec('home').label)}"><div class="wrap hero-grid">
+    const on = bookOn() ? ' data-book' : '';
+    return `<section id="${esc(sec('home').id)}" class="hero" aria-label="${esc(sec('home').label)}"><div class="wrap hero-in"><div class="hero-grid">
       <div class="hero-copy">
         <h1>${esc(h.headline)}</h1>
         <p class="lead">${esc(h.subheadline)}</p>
         ${stats.length ? `<div class="stats">${stats.map((s) => `<div class="stat"><b>${esc(s.value)}</b><span>${esc(s.label)}</span></div>`).join('')}</div>` : ''}
         <div class="cta-row">
-          <a class="btn" href="${esc(safe(booking))}">${esc(h.primaryCta)}</a>
+          <a class="btn" href="${esc(safe(booking))}"${on}>${esc(h.primaryCta)} <i class="fa-solid fa-arrow-right"></i></a>
           ${h.secondaryCta ? `<a class="btn btn-ghost" href="#${esc(sec('services').id)}">${esc(h.secondaryCta)}</a>` : ''}
         </div>
       </div>
       ${slides.length ? `<div class="hero-art"><div class="arch" id="arch">
         ${slides.map((s, i) => `<img src="${esc(safe(s))}" alt="" class="${i === 0 ? 'on' : ''}" ${i === 0 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">`).join('')}</div>
         ${slides.length > 1 ? `<div class="dots" id="dots">${slides.map((_, i) => `<button class="${i === 0 ? 'on' : ''}" aria-label="Show photo ${i + 1}"></button>`).join('')}</div>` : ''}</div>` : ''}
-    </div></section>`;
+    </div>${quickbar()}</div></section>`;
+  }
+
+  // "Book in under a minute" – pick a service, jump straight to live availability.
+  function quickbar() {
+    if (!bookOn()) return '';
+    const ui = D.settings.bookingUi;
+    const groups = D.categories.map((c) => ({ name: c.name, items: c.items.filter((i) => i.bookable) })).filter((g) => g.items.length);
+    if (!groups.length) return '';
+    return `<form class="quick" id="quick" aria-label="Quick booking">
+      <div class="quick-lab"><span class="ico"><i class="fa-regular fa-calendar-check"></i></span><div><b>${esc(ui.quickLabel)}</b><span>Live availability, instant confirmation</span></div></div>
+      <label class="quick-sel"><span class="sr">Service</span><select id="quickSvc"><option value="">${esc(ui.quickPlaceholder)}</option>
+        ${groups.map((g) => `<optgroup label="${esc(g.name)}">${g.items.map((i) => `<option value="${i.id}">${esc(i.name)} · ${esc(durTxt(i.duration))}</option>`).join('')}</optgroup>`).join('')}</select><i class="fa-solid fa-chevron-down"></i></label>
+      <button class="btn" type="submit">${esc(ui.quickButton)} <i class="fa-solid fa-arrow-right"></i></button></form>`;
+  }
+
+  function stepsBand() {
+    const ui = D.settings.bookingUi, steps = (ui.steps || []).filter((s) => s.title);
+    if (!bookOn() || !steps.length) return '';
+    return `<div class="howto"><div class="wrap"><h2 class="howto-h">${esc(ui.stepsHeading)}</h2>
+      <ol class="howto-list">${steps.map((st, i) => `<li class="step"><span class="step-ico"><i class="fa-solid fa-${icoName(st.icon, 'check')}"></i><em>${i + 1}</em></span><div><h3>${esc(st.title)}</h3><p>${esc(st.text)}</p></div></li>`).join('')}</ol></div></div>`;
   }
 
   function about() {
@@ -94,14 +134,15 @@
   }
   function servicePanel(i) {
     const c = D.categories[i], s = D.settings.servicesSection;
-    const url = safe(c.bookUrl) || booking;
+    const ext = safe(c.bookUrl);
     const pics = [c.imageA, c.imageB].filter(Boolean);
-    return `<div class="panel" aria-labelledby="tab-${c.id}"><div>
+    const rowBtn = (it) => (bookOn() && it.bookable ? `<button class="bk-btn" data-book="${it.id}" aria-label="Book ${esc(it.name)}"><i class="fa-regular fa-calendar-plus"></i><span>Book</span></button>` : '');
+    return `<div class="panel${bookOn() ? ' bk-on' : ''}" aria-labelledby="tab-${c.id}"><div>
       <h3>${esc(c.name)}</h3>${c.blurb ? `<p class="blurb">${esc(c.blurb)}</p>` : ''}
       ${c.items.length ? `<div class="price-head"><span>${esc(s.priceHeading)}</span><span>${esc(s.priceHeading2)}</span></div>
-      <ul class="prices">${c.items.map((it) => `<li><span class="nm">${esc(it.name)}${it.note ? `<small>${esc(it.note)}</small>` : ''}</span>${it.price ? `<span class="lead-dots"></span><span class="pr">${esc(it.price)}</span>` : ''}</li>`).join('')}</ul>`
+      <ul class="prices">${c.items.map((it) => `<li><span class="nm">${esc(it.name)}<small>${bookOn() && it.bookable ? `<i class="fa-regular fa-clock"></i> ${esc(durTxt(it.duration))}` : ''}${it.note ? `${bookOn() && it.bookable ? ' · ' : ''}${esc(it.note)}` : ''}</small></span><span class="lead-dots"></span>${it.price ? `<span class="pr">${esc(it.price)}</span>` : '<span class="pr ask">On request</span>'}${rowBtn(it)}</li>`).join('')}</ul>`
         : `<p class="empty-note">${esc(s.emptyNote)}</p>`}
-      <a class="btn" href="${esc(url)}">${esc(s.bookLabel)}</a></div>
+      <a class="btn" href="${esc(ext || booking)}"${!ext && bookOn() ? ' data-book' : ''}><i class="fa-regular fa-calendar-check"></i> ${esc(s.bookLabel)}</a></div>
       ${pics.length ? `<div class="pics">${pics.map((p) => `<div class="frame"><img src="${esc(safe(p))}" alt="${esc(c.name)}" loading="lazy" decoding="async"></div>`).join('')}</div>` : ''}</div>`;
   }
 
@@ -117,8 +158,9 @@
   function booking_() {
     const b = D.settings.booking;
     const pics = [b.image, b.image2].filter(Boolean);
+    const on = bookOn() ? ' data-book' : '';
     return wrapSection('booking', `<div class="booking-grid"><div>${ribbon('booking')}<h2>${esc(b.heading)}</h2>
-      <h3>${esc(b.subheading)}</h3><p>${esc(b.text)}</p><a class="btn" href="${esc(safe(booking))}">${esc(b.cta)}</a></div>
+      <h3>${esc(b.subheading)}</h3><p>${esc(b.text)}</p><a class="btn" href="${esc(safe(booking))}"${on}><i class="fa-regular fa-calendar-check"></i> ${esc(b.cta)}</a></div>
       ${pics.length ? `<div class="pair">${pics.map((p) => `<div class="frame"><img src="${esc(safe(p))}" alt="" loading="lazy" decoding="async"></div>`).join('')}</div>` : ''}</div>`, 'booking');
   }
 
@@ -133,7 +175,7 @@
 
   function contact() {
     const c = D.settings.contact;
-    const hours = (c.hours || []).filter((h) => h.days);
+    const hours = hoursRows();
     return wrapSection('contact', `<div class="section-head">${ribbon('contact')}<h2>${esc(c.heading)}</h2><p>${esc(c.intro)}</p></div>
       <div class="contact-grid"><div>
         <ul class="info-list">
@@ -141,7 +183,7 @@
           ${c.email ? `<li><i class="fa-solid fa-envelope"></i><div><small>Email</small><a href="mailto:${esc(c.email)}?subject=${encodeURIComponent('Request the Service')}&body=${encodeURIComponent('Dear Elixir Team,')}">${esc(c.email)}</a></div></li>` : ''}
           ${c.phone ? `<li><i class="fa-solid fa-phone"></i><div><small>Phone</small><a href="${esc(telHref(c.phone))}">${esc(c.phone)}</a>${c.phone2 ? ` &nbsp;/&nbsp; <a href="${esc(telHref(c.phone2))}">${esc(c.phone2)}</a>` : ''}</div></li>` : ''}
           ${c.whatsapp ? `<li><i class="fa-brands fa-whatsapp"></i><div><small>WhatsApp</small><a href="${esc(waLink(c))}" target="_blank" rel="noopener">${esc(c.whatsapp)}</a></div></li>` : ''}
-          ${hours.length ? `<li><i class="fa-regular fa-clock"></i><div><small>Opening hours</small><dl class="hours">${hours.map((h) => `<div><dt>${esc(h.days)}</dt><dd>${esc(h.time)}</dd></div>`).join('')}</dl></div></li>` : ''}
+          ${hours.length ? `<li><i class="fa-regular fa-clock"></i><div><small>Opening hours</small><dl class="hours">${hours.map((h) => `<div><dt>${esc(h.days)}</dt><dd>${esc(h.time)}</dd></div>`).join('')}</dl>${c.hoursNote ? `<small style="margin-top:6px">${esc(c.hoursNote)}</small>` : ''}</div></li>` : ''}
         </ul>${socials() ? `<div class="socials">${socials()}</div>` : ''}
       </div>
       <form class="card-form" id="contactForm" novalidate><h3>Send us a message</h3><p>${esc(c.formIntro)}</p>
@@ -171,27 +213,31 @@
   function promo() {
     const p = D.settings.promoSection;
     if (!D.promotions.length) return '';
+    const on = bookOn() ? ' data-book' : '';
     return wrapSection('promo', `<div class="section-head">${ribbon('promo')}<h2>${esc(p.heading)}</h2></div>
-      <div class="promos">${D.promotions.map((x) => `<article class="promo"><h3>${esc(x.title)}</h3><p>${esc(x.body)}</p>
-        <a class="btn btn-sm" href="${esc(safe(x.ctaUrl) || booking)}">${esc(x.ctaLabel || p.claimLabel)}</a></article>`).join('')}</div>
-      <div class="closing"><h2>${esc(p.closingHeading)}</h2><p>${esc(p.closingText)}</p><a class="btn" href="${esc(safe(booking))}">${esc(p.closingCta)}</a></div>`);
+      <div class="promos">${D.promotions.map((x) => `<article class="promo"><span class="promo-ic"><i class="fa-solid fa-${icoName(x.icon)}"></i></span><h3>${esc(x.title)}</h3><p>${esc(x.body)}</p>
+        <a class="btn btn-sm" href="${esc(safe(x.ctaUrl) || booking)}"${safe(x.ctaUrl) ? '' : on}>${esc(x.ctaLabel || p.claimLabel)} <i class="fa-solid fa-arrow-right"></i></a></article>`).join('')}</div>
+      <div class="closing"><h2>${esc(p.closingHeading)}</h2><p>${esc(p.closingText)}</p><a class="btn" href="${esc(safe(booking))}"${on}><i class="fa-regular fa-calendar-check"></i> ${esc(p.closingCta)}</a></div>`);
   }
 
   function testimonials() {
     const t = D.settings.testimonialsSection;
+    const star = '<i class="fa-solid fa-star"></i>';
     return wrapSection('testimonials', `<div class="t-head"><div class="section-head">${ribbon('testimonials')}<h2>${esc(t.heading)}</h2></div>
       <div class="t-nav"><button id="tPrev" aria-label="Previous reviews"><i class="fa-solid fa-arrow-left"></i></button><button id="tNext" aria-label="Next reviews"><i class="fa-solid fa-arrow-right"></i></button></div></div>
       ${D.testimonials.length ? `<div class="track" id="track" tabindex="0" aria-label="Client reviews">${D.testimonials.map((r) => `<figure class="review" style="margin:0">
-        <div class="stars" aria-label="${r.stars} out of 5 stars">${'★'.repeat(r.stars)}<span class="off">${'★'.repeat(5 - r.stars)}</span></div>
+        <div class="stars" role="img" aria-label="${r.stars} out of 5 stars">${star.repeat(r.stars)}<span class="off">${star.repeat(5 - r.stars)}</span></div>
         <blockquote>${esc(r.comment)}</blockquote><figcaption class="who"><b>${esc(r.name)}</b><span>${esc(r.type)}</span></figcaption>
         ${r.feedback ? `<div class="reply"><b>${esc(t.replyLabel)}</b>${esc(r.feedback)}</div>` : ''}</figure>`).join('')}</div>` : '<p class="no-reviews">Be the first to share your experience.</p>'}
-      <div style="margin-top:14px"><button class="btn btn-ghost" id="rateBtn">${esc(t.rateLabel)}</button></div>`);
+      <div style="margin-top:14px"><button class="btn btn-ghost" id="rateBtn"><i class="fa-regular fa-star"></i> ${esc(t.rateLabel)}</button></div>`);
   }
 
   function footer() {
     const c = D.settings.contact, b = D.settings.brand;
-    const hours = (c.hours || []).filter((h) => h.days);
+    const hours = hoursRows();
     const S = (k) => sec(k);
+    const on = bookOn() ? ' data-book' : '';
+    const bk = esc(safe(booking));
     return `<footer><div class="wrap"><div class="foot-grid">
       <div class="foot-logo"><img src="${esc(safe(b.logo))}" alt="${esc(b.name)}"><p>${esc(b.tagline)}</p>${socials() ? `<div class="socials">${socials()}</div>` : ''}</div>
       <div><h4>Contact Us</h4><ul>
@@ -204,10 +250,13 @@
       <div><h4>Quick Links</h4><ul>
         <li><a href="#${esc(S('services').id)}">Services</a></li><li><a href="#${esc(S('about').id)}">About Us</a></li><li><a href="#${esc(S('contact').id)}">Contact Us</a></li>
         <li><a href="#${esc(S('booking').id)}">Book Appointment</a></li><li><a href="#${esc(S('work').id)}">Work With Us</a></li><li><a href="?privacy-policy=true" data-open="privacy">Privacy Policy</a></li></ul></div>
-      <div><h4>Book Online</h4><p style="color:var(--muted)">${esc(D.settings.booking.text)}</p><a class="btn btn-sm" href="${esc(safe(booking))}">Book Now</a></div>
+      <div><h4>Book Online</h4><p style="color:var(--muted)">${esc(D.settings.booking.text)}</p><a class="btn btn-sm" href="${bk}"${on}><i class="fa-regular fa-calendar-check"></i> Book Now</a></div>
     </div><div class="foot-bottom"><p>© ${new Date().getFullYear()} <a href="/">${esc(b.name)}.</a> All rights reserved.</p>
       ${b.creditName ? `<p>${esc(b.creditLabel)}: <a href="${esc(safe(b.creditUrl) || '#')}">${esc(b.creditName)}</a></p>` : ''}</div></div></footer>
-      ${c.whatsapp ? `<a class="wa-float" href="${esc(waLink(c))}" target="_blank" rel="noopener" aria-label="Chat on WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>` : ''}`;
+      ${c.whatsapp ? `<a class="wa-float" href="${esc(waLink(c))}" target="_blank" rel="noopener" aria-label="Chat on WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>` : ''}
+      <nav class="mbar" aria-label="Quick actions"><a class="btn" href="${bk}"${on}><i class="fa-regular fa-calendar-check"></i> Book now</a>
+        ${c.phone ? `<a class="mb" href="${esc(telHref(c.phone))}" aria-label="Call us"><i class="fa-solid fa-phone"></i></a>` : ''}
+        ${c.whatsapp ? `<a class="mb wa" href="${esc(waLink(c))}" target="_blank" rel="noopener" aria-label="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>` : ''}</nav>`;
   }
 
   function dialogs() {
@@ -228,7 +277,7 @@
       <h3>Please Rate Us</h3><form id="rateForm" novalidate><div class="notice" role="status"></div>
         ${field('r_name', 'Your name', 'text', 'autocomplete="name" required')}
         <fieldset class="starpick"><legend class="sr">Rating</legend>
-          ${[5, 4, 3, 2, 1].map((n) => `<input type="radio" name="stars" id="s${n}" value="${n}"><label for="s${n}" title="${n} star${n > 1 ? 's' : ''}">★</label>`).join('')}</fieldset>
+          ${[5, 4, 3, 2, 1].map((n) => `<input type="radio" name="stars" id="s${n}" value="${n}"><label for="s${n}" title="${n} star${n > 1 ? 's' : ''}"><i class="fa-solid fa-star"></i></label>`).join('')}</fieldset>
         <div class="field" id="starErr"><div class="err" role="alert"></div></div>
         ${field('r_comment', 'Your comment', 'text', 'required placeholder="Tell us about your visit"', 'textarea')}
         <input class="hp" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
@@ -427,13 +476,38 @@
     document.addEventListener('input', (e) => { if (e.target.closest('.field.bad')) e.target.closest('.field').classList.remove('bad'); });
   }
 
+  // ---------- booking hooks, reveal-on-scroll ----------
+  function initBooking() {
+    document.addEventListener('click', (e) => {
+      const t = e.target.closest('[data-book]');
+      if (!t || !bookOn() || !window.ElixirBooking || e.metaKey || e.ctrlKey || e.shiftKey) return;
+      e.preventDefault();
+      const dr = $('#drawer'); if (dr) { dr.classList.remove('open'); dr.setAttribute('aria-hidden', 'true'); document.body.style.overflow = ''; }
+      const raw = t.dataset.book;
+      window.ElixirBooking.open({ services: raw ? raw.split(',').map(Number).filter(Boolean) : [] });
+    });
+    const q = $('#quick');
+    if (q) q.addEventListener('submit', (e) => { e.preventDefault(); const v = +$('#quickSvc').value; window.ElixirBooking.open({ services: v ? [v] : [] }); });
+    if (window.ElixirBooking) window.ElixirBooking.init(D);
+  }
+
+  function initReveal() {
+    if (!('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const els = $$('.section-head, .about-row, .panel, .promo, .review, .contact-grid > *, .work-grid > *, .step, .quick, .closing, .booking-grid > *, .howto-h');
+    document.documentElement.classList.add('rv-on');
+    els.forEach((e, i) => { e.classList.add('rv'); if (/promo|review|step/.test(e.className)) e.style.transitionDelay = `${(i % 4) * 90}ms`; });
+    const io = new IntersectionObserver((es) => es.forEach((en) => { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } }), { rootMargin: '0px 0px -6% 0px', threshold: 0.04 });
+    els.forEach((e) => io.observe(e));
+  }
+
   // ---------- boot ----------
   function render() {
     cfg = D.settings; booking = safe(cfg.brand.bookingUrl) || '#';
-    const map = { home: hero, about, services, gallery, booking: booking_, contact, work, promo, testimonials };
+    D.scheduling = D.scheduling || { enabled: false, hours: [] };
+    const map = { home: () => hero() + stepsBand(), about, services, gallery, booking: booking_, contact, work, promo, testimonials };
     const body = cfg.sections.filter((s) => s.visible && map[s.key]).map((s) => map[s.key]()).join('');
     $('#app').innerHTML = header() + `<main id="main">${body}</main>` + footer() + dialogs();
-    initHeader(); initHero(); initServices(); initGallery(); initLightbox(); initTestimonials(); initDialogs(); initForms();
+    initHeader(); initHero(); initServices(); initGallery(); initLightbox(); initTestimonials(); initDialogs(); initForms(); initBooking(); initReveal();
     if (location.hash) { const t = document.getElementById(location.hash.slice(1)); if (t) setTimeout(() => t.scrollIntoView(), 50); }
   }
 

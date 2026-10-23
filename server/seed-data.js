@@ -93,7 +93,7 @@ const settings = {
     heading: 'Book Your Experience Today',
     subheading: 'Team of Professionals is Waiting for You.',
     text: 'Choose your service, select a date and time, and confirm your appointment in minutes.',
-    cta: 'Click to Continue',
+    cta: 'Book Appointment',
     image: '/resources/serv3.jpeg',
     image2: '/resources/serv4.jpeg',
   },
@@ -108,6 +108,7 @@ const settings = {
     phone2: '+254 777 733 004',
     whatsapp: '+254 717 733 000',
     whatsappMessage: 'Hello, I am interested in your services!',
+    hoursNote: '',
     address: 'Kilimani, Commodore Office Suite, G3',
     mapsUrl: 'https://maps.google.com/?cid=16060609366277038593&entry=gps&g_st=aw',
     hours: [
@@ -162,6 +163,17 @@ const settings = {
     autoApprove: false,
   },
 
+  // Shown when someone opens a link that does not exist (HTTP 404).
+  notFound: {
+    heading: 'We couldn’t find that page',
+    message: 'The page you are looking for may have moved, or the link may have been mistyped. Let’s get you back to feeling your best.',
+    image: '/resources/serv8.jpeg',
+    homeLabel: 'Back to home',
+    bookLabel: 'Book an appointment',
+    linksHeading: 'Popular pages',
+    helpText: 'Need a hand?',
+  },
+
   privacy: {
     heading: 'Our Privacy Policy',
     effective: 'Jan 7th, 2025',
@@ -210,7 +222,10 @@ For questions or concerns about this Privacy Policy or your data, contact us at:
   },
 
   email: {
-    notifyTo: 'info@elixirsalonandspa.co.ke',
+    // Booking confirmations, reminders and replies to forms are sent FROM info@ (the mailbox in .env);
+    // when a client hits "Reply" it goes to the address below.
+    notifyTo: 'admin@elixirsalonandspa.co.ke',
+    replyTo: 'admin@elixirsalonandspa.co.ke',
     fromName: 'Elixir Salon & Spa',
     address: 'Commodore Office Suites, Kindaruma Road, Nairobi County',
     contactSubject: 'Welcome to Elixir Salon & Spa - Pamper, Relax, Renew',
@@ -219,57 +234,123 @@ For questions or concerns about this Privacy Policy or your data, contact us at:
     applicationSubject: 'Job Application Receipt',
     applicationBody:
       'Hello {{name}},\n\nThank you for your interest in employment at Elixir Salon & Spa! We are excited to meet you.\n\nOur team will review your application and if there is a strong alignment with the position, we will schedule a call to get to know you better and to answer any questions you have about Elixir Salon & Spa and the role.\n\nWe know that putting together a resume and application is a lot of work. We will give each a thoughtful consideration. We appreciate your patience through this process.\n\nShould you have any questions, do not hesitate to contact us!',
+    // ---- Booking emails ({{name}}, {{reference}}, {{date}}, {{time}}, {{services}} are filled in automatically) ----
+    bookingConfirmedSubject: 'Your booking is confirmed – {{reference}}',
+    bookingConfirmedBody: 'Hi {{name}},\n\nThank you for booking with Elixir Salon & Spa. Your appointment is confirmed and we cannot wait to pamper you.\n\nPlease arrive 5 to 10 minutes early. If your plans change, you can reschedule or cancel using the button below.',
+    bookingPendingSubject: 'We have received your booking request – {{reference}}',
+    bookingPendingBody: 'Hi {{name}},\n\nThank you for choosing Elixir Salon & Spa. We have received your request and our team will confirm it shortly. You will get another email as soon as it is confirmed.',
+    bookingUpdatedSubject: 'Your booking has been updated – {{reference}}',
+    bookingUpdatedBody: 'Hi {{name}},\n\nYour appointment has been updated. Here are the new details.',
+    bookingCancelledSubject: 'Your booking has been cancelled – {{reference}}',
+    bookingCancelledBody: 'Hi {{name}},\n\nYour appointment has been cancelled. We would love to see you soon – you can book a new time whenever suits you.',
+    bookingDeclinedSubject: 'About your booking request – {{reference}}',
+    bookingDeclinedBody: 'Hi {{name}},\n\nUnfortunately we are not able to accommodate that appointment time. Please choose another time and we will gladly look after you.',
+    bookingReminderSubject: 'Reminder: your appointment on {{date}} at {{time}}',
+    bookingReminderBody: 'Hi {{name}},\n\nA friendly reminder of your upcoming visit to Elixir Salon & Spa. We look forward to seeing you!',
+  },
+
+  scheduling: {
+    enabled: true,
+    timezone: 'Africa/Nairobi',
+    // 0 = Sunday … 6 = Saturday. Times are 24-hour.
+    hours: [
+      { day: 1, name: 'Monday', open: true, from: '09:00', to: '20:00' },
+      { day: 2, name: 'Tuesday', open: true, from: '07:30', to: '20:00' },
+      { day: 3, name: 'Wednesday', open: true, from: '07:30', to: '20:00' },
+      { day: 4, name: 'Thursday', open: true, from: '07:30', to: '20:00' },
+      { day: 5, name: 'Friday', open: true, from: '07:30', to: '20:00' },
+      { day: 6, name: 'Saturday', open: true, from: '08:00', to: '20:00' },
+      { day: 0, name: 'Sunday', open: true, from: '09:00', to: '17:00' },
+    ],
+    slotMinutes: 30,
+    leadHours: 2,
+    advanceDays: 60,
+    bufferMinutes: 0,
+    autoConfirm: true,
+    cancelHours: 12,
+    maxActive: 3,
+    maxServices: 6,
+    requireEmail: true,
+    reminderHours: 24,
+  },
+
+  bookingUi: {
+    title: 'Book your appointment',
+    stepServices: 'Choose your services',
+    stepTime: 'Pick a date and time',
+    stepDetails: 'Your details',
+    introServices: 'Select one or more services. You can see the duration and price of each.',
+    introTime: 'Choose a day, then a time that suits you.',
+    introDetails: 'Nearly there. Tell us who is coming and we will confirm your appointment.',
+    confirmLabel: 'Confirm booking',
+    requestLabel: 'Request booking',
+    successTitle: 'You are booked in',
+    successPendingTitle: 'Request received',
+    successText: 'A confirmation has been sent to your email. We look forward to welcoming you.',
+    successPendingText: 'Our team will confirm your appointment shortly. We will email you as soon as it is confirmed.',
+    policy: 'You can reschedule or cancel free of charge up to 12 hours before your appointment. Prices shown are estimates; the final price is confirmed at the salon.',
+    consent: 'I agree to the privacy policy and booking policy.',
+    quickLabel: 'Book in under a minute',
+    quickPlaceholder: 'Choose a service',
+    quickButton: 'Find a time',
+    stepsHeading: 'Booking made simple',
+    steps: [
+      { icon: 'hand-pointer', title: 'Choose a service', text: 'Pick what you need from our price list. Combine services in a single visit.' },
+      { icon: 'calendar-check', title: 'Select a time', text: 'See live availability and reserve the slot that fits your day.' },
+      { icon: 'envelope-circle-check', title: 'Get confirmation', text: 'Instant confirmation by email with a calendar invite and reminder.' },
+    ],
   },
 };
 
+// [name, price text, duration in minutes] – durations are sensible starting points, editable in the admin.
 const categories = [
   {
     name: 'Waxing', imageA: '/resources/serv3.jpeg', imageB: '/resources/serv4.jpeg',
     items: [
-      ['Full Body Waxing', '6,000'], ['Brazillian', '2,000'], ['Bikini', '1,500'], ['Under Arm', '800'],
-      ['Full Leg', '2,000'], ['Half Leg', '1,500'], ['Facial Waxing', '1,500'], ['Chin Waxing', '500'],
-      ['Chest Waxing', '1,000'], ['Eyebrows', '500'],
+      ['Full Body Waxing', '6,000', 120], ['Brazillian', '2,000', 45], ['Bikini', '1,500', 30], ['Under Arm', '800', 15],
+      ['Full Leg', '2,000', 45], ['Half Leg', '1,500', 30], ['Facial Waxing', '1,500', 20], ['Chin Waxing', '500', 10],
+      ['Chest Waxing', '1,000', 30], ['Eyebrows', '500', 15],
     ],
   },
   {
     name: 'Body Scrub', imageA: '/resources/serve7.jpeg', imageB: '/resources/serve2.jpeg',
     items: [
-      ['Salt Scrub', '4,000'], ['Caffe Scrub', '4,000'], ['Coconut Scrub', '4,000'],
-      ['Moroccan Scrub', '5,000'], ['Cocktail Scrub', '4,500'], ['Glows Scrub', '1,500'],
+      ['Salt Scrub', '4,000', 60], ['Caffe Scrub', '4,000', 60], ['Coconut Scrub', '4,000', 60],
+      ['Moroccan Scrub', '5,000', 75], ['Cocktail Scrub', '4,500', 60], ['Glows Scrub', '1,500', 30],
     ],
   },
   {
     name: 'Hair Services', imageA: '/resources/serv8.jpeg', imageB: '/resources/serv9.jpeg',
     items: [
-      ['Braiding', '10,000'], ['Natural Hairstyles', '3,000 - 7,000'], ['Dreadlock Retwist', '1,500 - 4,000'],
-      ['Temporary Locks', '6,000 - 12,000'], ['Sister Locks', '20,000 - 40,000'], ['Sister Locks Retwist', '5,000'],
-      ['Finger Coils/Purods', '2,500 - 3,500'], ['Hair Color', '2,500 - 7,500'], ['Undoing', '500 - 8,000'],
-      ['Sew-In', '3,500 - 5,500'],
+      ['Braiding', '10,000', 240], ['Natural Hairstyles', '3,000 - 7,000', 120], ['Dreadlock Retwist', '1,500 - 4,000', 90],
+      ['Temporary Locks', '6,000 - 12,000', 240], ['Sister Locks', '20,000 - 40,000', 480], ['Sister Locks Retwist', '5,000', 150],
+      ['Finger Coils/Purods', '2,500 - 3,500', 90], ['Hair Color', '2,500 - 7,500', 120], ['Undoing', '500 - 8,000', 90],
+      ['Sew-In', '3,500 - 5,500', 120],
     ],
   },
   {
     name: 'Make-up & Lashes', imageA: '/resources/serv10.jpeg', imageB: '/resources/serv11.jpg',
     items: [
-      ['Own Make-up', '1,500'], ['Salon Make-up', '3,000'], ['Touch Up', '1,000'],
-      ['Subtle/Natural Lashes', '4,000'], ['Classic Lashes', '4,500'], ['Hybrid Lashes', '5,000'],
-      ['Volume Lashes', '5,000'], ['Mega Volume Lashes', '5,500'], ['Lashes Refill', '1,500'],
-      ['Lashes Removal', '1,500'],
+      ['Own Make-up', '1,500', 45], ['Salon Make-up', '3,000', 60], ['Touch Up', '1,000', 30],
+      ['Subtle/Natural Lashes', '4,000', 90], ['Classic Lashes', '4,500', 105], ['Hybrid Lashes', '5,000', 120],
+      ['Volume Lashes', '5,000', 135], ['Mega Volume Lashes', '5,500', 150], ['Lashes Refill', '1,500', 60],
+      ['Lashes Removal', '1,500', 30],
     ],
   },
   {
     name: 'Eyebrows', imageA: '/resources/serv12.jpg', imageB: '/resources/serve13.jpg',
     items: [
-      ['Microblading', '10,000'], ['Ombre Shading', '10,000'], ['Touch Up Microblading', '5,000'],
-      ['Permanent Eyeliner', '1,000'], ['Eyebrows Tinting', '400'], ['Eyebrows Tweezing', '200'],
-      ['Threading', ''], ['Razor Blows Shaping', ''],
+      ['Microblading', '10,000', 150], ['Ombre Shading', '10,000', 150], ['Touch Up Microblading', '5,000', 90],
+      ['Permanent Eyeliner', '1,000', 45], ['Eyebrows Tinting', '400', 20], ['Eyebrows Tweezing', '200', 15],
+      ['Threading', '', 15], ['Razor Blows Shaping', '', 20],
     ],
   },
   {
     name: 'Men Services', imageA: '/resources/serv15.jpeg', imageB: '/resources/serve14.jpeg',
     items: [
-      ['Haircut', '800'], ['Haircut + Beard', '1,000'], ['Blowout', '1,000'], ['Senior (Above 61 Yrs)', '500'],
-      ['Hot Towel Shave', '1,000'], ['Beard Trim', '400'], ['Kid Cut (Below 10 Yrs)', '400'],
-      ['Above 10 Yrs Age', '500'], ['Shampoo', '500 - 1,500'],
+      ['Haircut', '800', 30], ['Haircut + Beard', '1,000', 45], ['Blowout', '1,000', 30], ['Senior (Above 61 Yrs)', '500', 30],
+      ['Hot Towel Shave', '1,000', 30], ['Beard Trim', '400', 20], ['Kid Cut (Below 10 Yrs)', '400', 25],
+      ['Above 10 Yrs Age', '500', 30], ['Shampoo', '500 - 1,500', 20],
     ],
   },
   { name: 'Massage', imageA: '/resources/serv1.jpeg', imageB: '/resources/serve2.jpeg', items: [] },
@@ -287,10 +368,10 @@ const photos = [
 const videos = Array.from({ length: 17 }, (_, i) => `/resources/vid${i + 1}.mp4`);
 
 const promotions = [
-  { title: '🌟 Exclusive Offer for New Clients!', body: 'Welcome to our services! Enjoy 20% off your first booking. Check your email for details and experience our exceptional aftercare.' },
-  { title: '🎉 Celebrate Your Special Day with Us!', body: 'Book our special package and enjoy 20% off on all our services. Make your day truly unforgettable!' },
-  { title: '💎 Loyalty Reward - We Value You!', body: 'As a token of our appreciation, enjoy 20% off your next booking. Thank you for choosing us again!' },
-  { title: '✨ Seventh Appointment Special - You Deserve It!', body: 'Your loyalty matters! Celebrate your 7th appointment with us and enjoy 20% off on all our services. Thank you for being part of our journey!' },
+  { icon: 'gift', title: 'Exclusive Offer for New Clients', body: 'Welcome to our services! Enjoy 20% off your first booking. Check your email for details and experience our exceptional aftercare.' },
+  { icon: 'cake-candles', title: 'Celebrate Your Special Day with Us', body: 'Book our special package and enjoy 20% off on all our services. Make your day truly unforgettable!' },
+  { icon: 'gem', title: 'Loyalty Reward – We Value You', body: 'As a token of our appreciation, enjoy 20% off your next booking. Thank you for choosing us again!' },
+  { icon: 'crown', title: 'Seventh Appointment Special – You Deserve It', body: 'Your loyalty matters! Celebrate your 7th appointment with us and enjoy 20% off on all our services. Thank you for being part of our journey!' },
 ];
 
 const jobs = [

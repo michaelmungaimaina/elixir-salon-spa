@@ -50,6 +50,14 @@ window.A = (() => {
     download: 'M12 4v12M7 11l5 5 5-5M4 20h16',
     copy: 'M8 8h12v12H8zM4 16V4h12',
     play: 'M8 5l11 7-11 7z',
+    calendar: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4',
+    clock: 'M12 21a9 9 0 100-18 9 9 0 000 18zM12 7v5l3 2',
+    grip: 'M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01',
+    ban: 'M12 21a9 9 0 100-18 9 9 0 000 18zM5.6 5.6l12.8 12.8',
+    send: 'M22 2L11 13M22 2l-7 20-4-9-9-4z',
+    refresh: 'M20 11a8 8 0 10-2.3 6M20 4v7h-7',
+    circlecheck: 'M12 21a9 9 0 100-18 9 9 0 000 18zM8 12l3 3 5-6',
+    minus: 'M5 12h14',
     phone: 'M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z',
   };
   const icon = (n) => h('span', { html: `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="${P[n] || P.tag}"/></svg>` });
@@ -182,6 +190,8 @@ window.A = (() => {
     const v = value;
     switch (f.type) {
       case 'textarea': { const el = h('textarea', { rows: f.rows || 4, placeholder: f.placeholder || '', value: v ?? '' }); get = () => el.value; node = wrap(el, true); break; }
+      case 'heading': { node = h('div', { class: 'f full fh' }, h('h3', {}, f.label), f.hint ? h('p', { class: 'hint' }, f.hint) : null); get = () => undefined; break; }
+      case 'number': { const el = h('input', { type: 'number', min: f.min, max: f.max, step: f.step || 1, inputmode: 'numeric', value: v ?? '' }); get = () => (el.value === '' ? '' : Number(el.value)); node = wrap(el, true); break; }
       case 'bool': { const el = h('input', { type: 'checkbox', checked: !!v }); get = () => el.checked; node = h('div', { class: 'f' + (f.half ? '' : ' full') }, h('label', { class: 'switch' }, el, h('i'), h('span', {}, f.label)), f.hint ? h('div', { class: 'hint' }, f.hint) : null); break; }
       case 'color': { const c = h('input', { type: 'color', value: v || '#000000' }), t = h('input', { class: 'in', type: 'text', value: v || '', maxlength: 7, style: 'max-width:130px' }); c.addEventListener('input', () => (t.value = c.value)); t.addEventListener('input', () => /^#[0-9a-f]{6}$/i.test(t.value) && (c.value = t.value)); get = () => t.value; node = wrap(h('div', { class: 'colorrow' }, c, t)); break; }
       case 'select': { const el = h('select', {}, ...f.options.map((o) => h('option', { value: o.v ?? o, selected: (o.v ?? o) === v }, o.l ?? o))); get = () => el.value; node = wrap(el, true); break; }
@@ -214,6 +224,8 @@ window.A = (() => {
             let ctl;
             if (c.type === 'bool') ctl = h('label', { class: 'switch' }, h('input', { type: 'checkbox', checked: !!r[c.k], onchange: (e) => (r[c.k] = e.target.checked) }), h('i'), h('span', {}, c.label));
             else if (c.type === 'static') ctl = h('div', { class: 'static' }, r[c.k]);
+            else if (c.type === 'time') ctl = h('input', { class: 'in', type: 'time', value: r[c.k] || '', oninput: (e) => (r[c.k] = e.target.value) });
+            else if (c.type === 'number') ctl = h('input', { class: 'in', type: 'number', min: c.min, max: c.max, step: c.step || 1, value: r[c.k] ?? '', oninput: (e) => (r[c.k] = e.target.value === '' ? '' : Number(e.target.value)) });
             else if (c.type === 'select') ctl = h('select', { class: 'in', onchange: (e) => (r[c.k] = e.target.value) }, ...c.options.map((o) => h('option', { value: o.v, selected: o.v === r[c.k] }, o.l)));
             else ctl = h('input', { class: 'in', type: 'text', value: r[c.k] ?? '', placeholder: c.placeholder || '', oninput: (e) => (r[c.k] = e.target.value) });
             return h('div', { class: 'c' + (c.wide ? ' wide' : '') }, c.type === 'bool' || c.type === 'static' ? null : h('small', {}, c.label), ctl);
@@ -232,11 +244,14 @@ window.A = (() => {
   // schema -> { el, get() }
   function buildForm(schema, data) {
     const fields = schema.map((f) => ({ f, ...buildField(f, data?.[f.k]) }));
-    return { el: h('div', { class: 'grid2' }, ...fields.map((x) => x.node)), get: () => Object.fromEntries(fields.map((x) => [x.f.k, x.get()])) };
+    return { el: h('div', { class: 'grid2' }, ...fields.map((x) => x.node)), get: () => Object.fromEntries(fields.filter((x) => x.f.type !== 'heading').map((x) => [x.f.k, x.get()])) };
   }
 
   const fmtDate = (s) => { if (!s) return ''; const d = new Date(String(s).replace(' ', 'T') + (String(s).includes('T') ? '' : 'Z')); return isNaN(d) ? s : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) + ', ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); };
 
-  const A = { h, $, icon, api, toast, fail, modal, confirmBox, sortable, move, pickMedia, dropzone, thumb, fmtSize, fmtDate, buildField, buildForm, isVideo, onUnauthorized: null, state: {} };
+  const star = (on) => h('span', { html: `<svg class="ic star ${on ? 'on' : ''}" viewBox="0 0 24 24" aria-hidden="true"><path d="${P.star}"/></svg>` });
+  const stars = (n) => h('span', { class: 'stars', role: 'img', 'aria-label': `${n} out of 5 stars` }, ...[1, 2, 3, 4, 5].map((i) => star(i <= n)));
+
+  const A = { stars, h, $, icon, api, toast, fail, modal, confirmBox, sortable, move, pickMedia, dropzone, thumb, fmtSize, fmtDate, buildField, buildForm, isVideo, onUnauthorized: null, state: {} };
   return A;
 })();

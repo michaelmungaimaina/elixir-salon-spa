@@ -8,6 +8,11 @@ const db = require('./db');
 const auth = require('./auth');
 const mailer = require('./mailer');
 const adminRouter = require('./admin');
+const B = require('./booking');
+const BM = require('./booking-mail');
+const bookingRouter = require('./booking-public');
+const scheduler = require('./scheduler');
+const notFound = require('./notfound');
 const u = require('./util');
 
 const app = express();
@@ -21,6 +26,8 @@ app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   next();
 });
+
+app.use((req, res, next) => { if (!config.siteUrl && !/\.(css|js|woff2?|jpe?g|png|webp|gif|mp4|webm|ico)$/i.test(req.path)) BM.setOrigin(`${req.protocol}://${req.get('host')}`); next(); });
 
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 const { q } = db;
@@ -36,23 +43,25 @@ adminRouter.setChangeHook(invalidate);
 async function buildSite() {
   if (siteCache && Date.now() - siteBuiltAt < CACHE_MS) return siteCache;
   const settings = await db.allSettings();
-  delete settings.email; // internal only
+  delete settings.email;      // internal only
+  delete settings.scheduling; // exposed in a safe, trimmed form below
 
   const cats = await q('SELECT * FROM service_categories WHERE visible = 1 ORDER BY sort_order, id');
   const items = await q('SELECT * FROM service_items WHERE visible = 1 ORDER BY sort_order, id');
   const categories = cats.map((c) => ({
     id: c.id, name: c.name, blurb: c.blurb, imageA: c.image_a, imageB: c.image_b, bookUrl: c.book_url,
-    items: items.filter((i) => i.category_id === c.id).map((i) => ({ name: i.name, price: i.price, note: i.note })),
+    items: items.filter((i) => i.category_id === c.id).map((i) => { const p = B.parsePrice(i.price); return { id: i.id, name: i.name, price: i.price, note: i.note, duration: i.duration_min, bookable: !!i.bookable, min: p.min, max: p.max }; }),
   }));
   const gallery = (await q('SELECT id, type, src, caption FROM gallery_items WHERE visible = 1 ORDER BY sort_order, id'));
   const promotions = (await q(
-    'SELECT id, title, body, cta_label, cta_url FROM promotions WHERE visible = 1 AND (starts_on IS NULL OR starts_on <= CURDATE()) AND (ends_on IS NULL OR ends_on >= CURDATE()) ORDER BY sort_order, id'
-  )).map((p) => ({ id: p.id, title: p.title, body: p.body, ctaLabel: p.cta_label, ctaUrl: p.cta_url }));
+    'SELECT id, icon, title, body, cta_label, cta_url FROM promotions WHERE visible = 1 AND (starts_on IS NULL OR starts_on <= CURDATE()) AND (ends_on IS NULL OR ends_on >= CURDATE()) ORDER BY sort_order, id'
+  )).map((p) => ({ id: p.id, icon: p.icon, title: p.title, body: p.body, ctaLabel: p.cta_label, ctaUrl: p.cta_url }));
   const jobs = (await q('SELECT id, title, description FROM jobs WHERE visible = 1 ORDER BY sort_order, id'));
   const testimonials = (await q("SELECT id, client_name, client_type, comment, stars, feedback FROM ratings WHERE status = 'approved' ORDER BY sort_order = 0 DESC, sort_order, id DESC LIMIT 60"))
     .map((r) => ({ id: r.id, name: r.client_name, type: r.client_type, comment: r.comment, stars: r.stars, feedback: r.feedback || '' }));
+  const scheduling = await B.publicConfig();
 
-  siteCache = { settings, categories, gallery, promotions, jobs, testimonials };
+  siteCache = { settings, categories, gallery, promotions, jobs, testimonials, scheduling };
   siteBuiltAt = Date.now();
   return siteCache;
 }
@@ -79,6 +88,7 @@ app.get(['/', '/index.html'], wrap(async (req, res) => {
     image: abs(o, seo.ogImage), telephone: contact.phone, email: contact.email,
     address: { '@type': 'PostalAddress', streetAddress: contact.address, addressCountry: 'KE' },
     sameAs: (contact.social || []).map((s) => s.url).filter(Boolean),
+    ...(site.scheduling.enabled ? { potentialAction: { '@type': 'ReserveAction', target: { '@type': 'EntryPoint', urlTemplate: `${o}/?book=1`, actionPlatform: ['http://schema.org/DesktopWebPlatform', 'http://schema.org/MobileWebPlatform'] }, result: { '@type': 'Reservation', name: 'Book an appointment' } } } : {}),
   };
   const gtm = String(brand.gtmId || '').replace(/[^A-Za-z0-9-]/g, '');
   const head = `
@@ -104,7 +114,7 @@ app.get(['/', '/index.html'], wrap(async (req, res) => {
 
 app.get('/api/site', wrap(async (req, res) => { res.setHeader('Cache-Control', 'no-cache'); res.json(await buildSite()); }));
 
-app.get('/robots.txt', (req, res) => res.type('text/plain').send(`User-agent: *\nDisallow: /admin\nDisallow: /api/\nSitemap: ${origin(req)}/sitemap.xml\n`));
+app.get('/robots.txt', (req, res) => res.type('text/plain').send(`User-agent: *\nDisallow: /admin\nDisallow: /api/\nDisallow: /booking/\nSitemap: ${origin(req)}/sitemap.xml\n`));
 app.get('/sitemap.xml', (req, res) => res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${origin(req)}/</loc><changefreq>weekly</changefreq></url></urlset>`));
 
 // ---------------------------------------------------------------
@@ -163,6 +173,32 @@ app.post('/api/ratings', formLimit, wrap(async (req, res) => {
 }));
 
 // ---------------------------------------------------------------
+// Booking
+// ---------------------------------------------------------------
+app.use('/api/booking', bookingRouter);
+
+// "Manage my booking" link from emails – serves the normal site; the page script opens the booking panel.
+app.get('/booking/:token', wrap(async (req, res) => {
+  const site = await buildSite();
+  const { seo, theme, brand } = site.settings;
+  const head = `<title>Your booking | ${u.esc(brand.name)}</title><meta name="robots" content="noindex,nofollow"><link rel="icon" href="${u.esc(brand.logo)}"><meta name="theme-color" content="${u.hex(theme.green, '#1A5B38')}">
+    <style id="theme">:root{--emerald:${u.hex(theme.green, '#1A5B38')};--gold:${u.hex(theme.gold, '#D4AC52')};--ground:${u.hex(theme.ground, '#2A2519')}}</style>`;
+  const data = `<script>window.__SITE__=${JSON.stringify(site).replace(/</g, '\\u003c').replace(/\u2028|\u2029/g, '')};</script>`;
+  res.setHeader('Cache-Control', 'no-store');
+  res.type('html').send(getTemplate().replace('<!--HEAD-->', head).replace('<!--DATA-->', data));
+}));
+
+app.get('/booking/:token/calendar.ics', wrap(async (req, res) => {
+  const b = await bookingRouter.byToken(req.params.token).catch(() => null);
+  if (!b) return res.status(404).type('text').send('Not found');
+  const [brand, contact, email, sched] = await Promise.all([db.getSetting('brand'), db.getSetting('contact'), db.getSetting('email'), B.getSched()]);
+  const ics = B.buildIcs(b, { brandName: brand.name, address: (email || {}).address || contact.address, phone: contact.phone, manageUrl: `${BM.baseUrl()}/booking/${b.token}`, tz: sched.timezone });
+  res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="elixir-${b.reference}.ics"`);
+  res.send(ics);
+}));
+
+// ---------------------------------------------------------------
 // Admin
 // ---------------------------------------------------------------
 app.use('/api/admin', adminRouter);
@@ -178,7 +214,16 @@ app.use(express.static(config.publicDir, {
 }));
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
-app.use((req, res) => res.status(404).type('html').send('<!doctype html><meta name="viewport" content="width=device-width"><body style="font-family:sans-serif;background:#2A2519;color:#f6f1dc;display:grid;place-items:center;height:100vh;margin:0;text-align:center"><div><h1>Page not found</h1><a href="/" style="color:#D4AC52">Back to Elixir Salon &amp; Spa</a></div>'));
+// Branded 404 page for unknown addresses. APIs, missing files and non-page requests get a tiny plain response instead.
+const ASSET = /\.(css|js|mjs|map|json|txt|xml|png|jpe?g|webp|gif|svg|ico|avif|woff2?|ttf|otf|mp4|webm|pdf|ics|zip)$/i;
+app.use(wrap(async (req, res) => {
+  res.status(404);
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('X-Robots-Tag', 'noindex');
+  if (!['GET', 'HEAD'].includes(req.method) || ASSET.test(req.path)) return res.type('text').send('Not found');
+  try { res.type('html').send(notFound.render(await buildSite(), req)); }
+  catch (e) { res.type('html').send('<!doctype html><meta name="viewport" content="width=device-width"><title>Page not found</title><body style="font-family:sans-serif;background:#2A2519;color:#f6f1dc;display:grid;place-items:center;height:100vh;margin:0;text-align:center"><div><h1>Page not found</h1><a href="/" style="color:#D4AC52">Back to the home page</a></div>'); }
+}));
 
 app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
   if (err instanceof multer.MulterError || /Only JPG|Please upload/.test(err.message)) {
@@ -191,5 +236,7 @@ app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
 (async () => {
   await db.init();
   await auth.bootstrapAdmin(config.bootstrapAdmin);
+  scheduler.start();
+  mailer.verify().then((v) => console.log(v.configured ? (v.ok ? `Email ready: sending as ${v.from} via ${v.host}:${v.port}` : `Email NOT working (${v.error})`) : 'Email not configured – set EMAIL_USER / EMAIL_PASS in .env')).catch(() => {});
   app.listen(config.port, () => console.log(`Elixir Salon & Spa running at http://localhost:${config.port}  (admin: /admin)`));
 })().catch((e) => { console.error('Failed to start:', e.message); process.exit(1); });

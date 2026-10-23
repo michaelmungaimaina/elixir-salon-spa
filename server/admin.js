@@ -8,6 +8,8 @@ const auth = require('./auth');
 const mailer = require('./mailer');
 const seed = require('./seed-data');
 const u = require('./util');
+const B = require('./booking');
+const T = require('./timeutil');
 
 const router = express.Router();
 const { q } = db;
@@ -70,6 +72,8 @@ router.use((req, res, next) => {
   next();
 });
 
+router.use('/', require('./booking-admin'));
+
 router.get('/me', (req, res) => res.json({ user: req.user, mailConfigured: mailer.isConfigured() }));
 
 // ---------- Dashboard ----------
@@ -94,7 +98,14 @@ router.get('/dashboard', wrap(async (req, res) => {
   const recentMessages = await q('SELECT id, name, message, status, created_at FROM contact_data ORDER BY id DESC LIMIT 5');
   const recentApplications = await q('SELECT id, name, position, status, created_at FROM applications ORDER BY id DESC LIMIT 5');
   const activity = await q('SELECT user_name, action, created_at FROM activity_log ORDER BY id DESC LIMIT 8');
-  res.json({ counts, series, recentMessages, recentApplications, activity, mailConfigured: mailer.isConfigured() });
+  const sched = await B.getSched(); const now = T.nowIn(sched.timezone);
+  const bookings = {
+    today: await one(`SELECT COUNT(*) n FROM bookings WHERE status IN ('pending','confirmed','completed') AND DATE(starts_at) = '${now.date}'`),
+    pending: await one("SELECT COUNT(*) n FROM bookings WHERE status = 'pending'"),
+    next7: await one(`SELECT COUNT(*) n FROM bookings WHERE status IN ('pending','confirmed') AND starts_at >= '${now.iso}' AND starts_at < '${T.addDays(now.date, 7)} 23:59:59'`),
+    today_list: await B.attachItems(await q(`${B.SELECT} WHERE DATE(b.starts_at) = ? AND b.status IN ('pending','confirmed','completed') ORDER BY b.starts_at`, [now.date])),
+  };
+  res.json({ counts, bookings, series, recentMessages, recentApplications, activity, mailConfigured: mailer.isConfigured(), onlineBooking: sched.enabled });
 }));
 
 // ---------- Settings (all editable copy lives here) ----------
@@ -107,6 +118,7 @@ router.put('/settings/:group', wrap(async (req, res) => {
   const def = seed.settings[g];
   const val = u.clean(req.body);
   if (Array.isArray(def) !== Array.isArray(val) || typeof val !== 'object' || val === null) return res.status(400).json({ error: 'Invalid data.' });
+  if (g === 'scheduling') return res.json(await save('scheduling', normScheduling(val, def)));
   if (g === 'theme') {
     val.green = u.hex(val.green, def.green); val.gold = u.hex(val.gold, def.gold); val.ground = u.hex(val.ground, def.ground);
   }
@@ -118,6 +130,23 @@ router.put('/settings/:group', wrap(async (req, res) => {
   }
   res.json(await save(g, val));
 }));
+function normScheduling(v, def) {
+  const n = (x, lo, hi, d) => { const k = Math.round(Number(x)); return Number.isFinite(k) ? Math.min(hi, Math.max(lo, k)) : d; };
+  let tz = def.timezone;
+  try { new Intl.DateTimeFormat('en', { timeZone: v.timezone }); tz = v.timezone; } catch { /* keep default */ }
+  return {
+    enabled: v.enabled !== false, timezone: tz,
+    hours: def.hours.map((h) => {
+      const x = (v.hours || []).find((y) => +y.day === h.day) || {};
+      let from = T.validTime(x.from) ? x.from : h.from, to = T.validTime(x.to) ? x.to : h.to;
+      if (T.toMin(to) <= T.toMin(from)) { from = h.from; to = h.to; }
+      return { day: h.day, name: h.name, open: x.open !== false, from, to };
+    }),
+    slotMinutes: n(v.slotMinutes, 5, 120, 30), leadHours: n(v.leadHours, 0, 168, 2), advanceDays: n(v.advanceDays, 1, 365, 60), bufferMinutes: n(v.bufferMinutes, 0, 120, 0),
+    autoConfirm: v.autoConfirm !== false, cancelHours: n(v.cancelHours, 0, 168, 12), maxActive: n(v.maxActive, 0, 20, 3), maxServices: n(v.maxServices, 1, 12, 6),
+    requireEmail: v.requireEmail !== false, reminderHours: n(v.reminderHours, 0, 168, 24),
+  };
+}
 async function save(key, val) { await db.setSetting(key, val); return val; }
 
 // ---------- Generic CRUD for ordered collections ----------
@@ -153,9 +182,9 @@ function crud(route, table, fields, { parent } = {}) {
 
 const S = (n) => (v) => u.str(v, n);
 crud('categories', 'service_categories', { name: S(160), blurb: S(500), image_a: u.url, image_b: u.url, book_url: u.url, visible: u.bool });
-crud('items', 'service_items', { category_id: (v) => u.int(v), name: S(200), price: S(80), note: S(300), visible: u.bool }, { parent: 'category_id' });
+crud('items', 'service_items', { category_id: (v) => u.int(v), name: S(200), price: S(80), note: S(300), duration_min: (v) => Math.min(720, Math.max(5, u.int(v, 60))), bookable: u.bool, visible: u.bool }, { parent: 'category_id' });
 crud('gallery', 'gallery_items', { type: (v) => (v === 'video' ? 'video' : 'photo'), src: u.url, caption: S(300), visible: u.bool });
-crud('promotions', 'promotions', { title: S(240), body: S(2000), cta_label: S(80), cta_url: u.url, starts_on: u.date, ends_on: u.date, visible: u.bool });
+crud('promotions', 'promotions', { icon: (v) => (/^[a-z0-9-]{0,40}$/.test(String(v || '')) ? String(v || '') : ''), title: S(240), body: S(2000), cta_label: S(80), cta_url: u.url, starts_on: u.date, ends_on: u.date, visible: u.bool });
 crud('jobs', 'jobs', { title: S(200), description: S(500), visible: u.bool });
 
 router.post('/gallery/bulk', wrap(async (req, res) => {
