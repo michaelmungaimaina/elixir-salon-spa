@@ -1,0 +1,6 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/eyersjwd/elixir-site/
+    - /bin/cp -R * $DEPLOYPATH
+    - /bin/rm -rf $DEPLOYPATH/.git
